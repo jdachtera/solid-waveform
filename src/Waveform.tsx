@@ -130,12 +130,10 @@ export const Waveform = (
     const samplesPerPx = visibleLength() / width;
     const start = Math.floor((props.position / duration()) * (dataLength() / samplesPerPx));
     const end = start + Math.min(visibleLength(), Math.floor(width));
-    const peaksOpacity = clamp(Math.log(samplesPerPx / 96) - 0.5, 0, 1);
+    const peaksOpacity = clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1);
     const scale = props.scale;
     const strokeStyle = props.strokeStyle;
     const logScale = props.logScale;
-
-    console.log({ logScale });
 
     cancelAnimationFrame(animationFrame);
 

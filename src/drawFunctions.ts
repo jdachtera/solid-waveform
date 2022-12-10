@@ -40,7 +40,7 @@ export const drawWaveformWithPeaks = async ({
   height,
   context,
   scale = 1,
-  strokeStyle = 'rgb(0,0,0)',
+  strokeStyle = "rgb(0,0,0)",
   logScale,
 }: {
   peaks: number[][];
@@ -54,25 +54,18 @@ export const drawWaveformWithPeaks = async ({
 }) => {
   const startY = height / 2;
 
-  const multiplicator = 1024 / Math.log10(1024);
+  const scaledPeaks = peaks.map(([min, max], i, peaks): [number, number, number, number] => {
+    const minValue = logScale ? -Math.log10(-min) : min;
+    const maxValue = logScale ? Math.log10(max) : max;
 
-  const scaledPeaks = peaks.map(
-    ([min, max], i, peaks): [number, number, number, number] => {
-      const minValue = logScale
-        ? -Math.log10(-min / 1024) * multiplicator
-        : min;
-      const maxValue = logScale ? Math.log10(max / 1024) * multiplicator : max;
+    const x = (i / peaks.length) * width;
 
-      const x = (i / peaks.length) * width;
+    const minY = startY + minValue * startY * scale;
+    const maxY = startY + maxValue * startY * scale;
+    const absMaxY = Math.abs(minValue) > Math.abs(maxValue) ? minY : maxY;
 
-      const minY = startY + (minValue / 1024) * startY * scale;
-      const maxY = startY + (maxValue / 1024) * startY * scale;
-
-      const absMaxY = Math.abs(minValue) > Math.abs(maxValue) ? minY : maxY;
-
-      return [x, absMaxY, minY, maxY];
-    },
-  );
+    return [x, absMaxY, minY, maxY];
+  });
 
   context.clearRect(0, 0, width, height);
   context.strokeStyle = strokeStyle;

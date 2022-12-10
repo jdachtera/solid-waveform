@@ -1,14 +1,16 @@
-import { Component, createResource, createSignal, untrack } from "solid-js";
+import { Component, createEffect, createResource, createSignal, untrack } from "solid-js";
 import logo from "./logo.svg";
 import styles from "./App.module.css";
 import { Region, Waveform } from "../src";
 
 const App: Component = () => {
-  const [url, setUrl] = createSignal("/jam_session.m4a");
+  let audioSource: AudioBufferSourceNode | undefined;
+  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
+  const [url, setUrl] = createSignal("/jam_session.m4a");
   const [inputUrl, setInputUrl] = createSignal(untrack(() => url()));
 
-  const [audioResource] = createResource(url, async (url) => {
+  const [audioBuffer] = createResource(url, async (url) => {
     const context = new AudioContext();
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
@@ -25,7 +27,7 @@ const App: Component = () => {
     <div class={styles.App}>
       <Waveform
         style={{ height: "300px" }}
-        buffer={audioResource()}
+        buffer={audioBuffer()}
         position={position()}
         regions={regions()}
         zoom={zoom()}
@@ -41,38 +43,45 @@ const App: Component = () => {
         onCreateRegion={(region) => {
           setRegions([...regions(), region]);
         }}
+        onClickRegion={(region) => {
+          audioSource?.stop();
+          audioSource = new AudioBufferSourceNode(audioCtx, {
+            buffer: audioBuffer(),
+          });
+          audioSource.connect(audioCtx.destination);
+          audioSource.start(0, region.start, region.end - region.start);
+        }}
         strokeStyle="#121212"
       />
 
-      <form>
-        <div>
-          <label>Audio URL:</label>
-          <input value={inputUrl()} onChange={(event) => setInputUrl(event.currentTarget.value)} />
-          <button onClick={() => setUrl(inputUrl())}>Update</button>
-        </div>
+      <button onClick={() => audioSource?.stop()}>Stop Audio</button>
+      <div>
+        <label>Audio URL:</label>
+        <input value={inputUrl()} onChange={(event) => setInputUrl(event.currentTarget.value)} />
+        <button onClick={() => setUrl(inputUrl())}>Update</button>
+      </div>
 
-        <div>
-          <label>Position:</label>
-          <input value={position().toFixed(3)} />
-        </div>
+      <div>
+        <label>Position:</label>
+        <input value={position().toFixed(3)} />
+      </div>
 
-        <div>
-          <label>Zoom:</label>
-          <input value={zoom().toFixed(3)} />
-        </div>
+      <div>
+        <label>Zoom:</label>
+        <input value={zoom().toFixed(3)} />
+      </div>
 
-        <div>
-          <label>Scale:</label>
-          <input value={scale().toFixed(3)} />
-        </div>
+      <div>
+        <label>Scale:</label>
+        <input value={scale().toFixed(3)} />
+      </div>
 
-        <div>
-          <label>
-            Logarithmic
-            <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
-          </label>
-        </div>
-      </form>
+      <div>
+        <label>
+          Logarithmic
+          <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
+        </label>
+      </div>
     </div>
   );
 };
