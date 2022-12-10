@@ -1,4 +1,4 @@
-import { Component, createEffect, createResource, createSignal, untrack } from "solid-js";
+import { Component, createResource, createSignal, untrack } from "solid-js";
 import logo from "./logo.svg";
 import styles from "./App.module.css";
 import { Region, Waveform } from "../src";
@@ -25,6 +25,7 @@ const App: Component = () => {
 
   return (
     <div class={styles.App}>
+      <h1>Solid Waveform</h1>
       <Waveform
         style={{ height: "300px" }}
         buffer={audioBuffer()}

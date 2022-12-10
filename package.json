@@ -37,7 +37,7 @@
   "scripts": {
     "dev": "vite serve dev",
     "test": "echo \"test not setup\"",
-    "build": "rollup -c",
+    "build": "rollup -c && vite build dev",
     "prepublishOnly": "yarn build",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
     "update-deps": "taze -w && yarn",
