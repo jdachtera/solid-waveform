@@ -4,7 +4,7 @@
 
 # solid-waveform
 
-[![pnpm](https://img.shields.io/badge/maintained%20with-yarn-cc00ff.svg?style=for-the-badge&logo=yarn)](https://yarnpkg.com/)
+[![yarn](https://img.shields.io/badge/maintained%20with-yarn-cc00ff.svg?style=for-the-badge&logo=yarn)](https://yarnpkg.com/)
 
 Waveform UI Control for Solid JS apps
 
