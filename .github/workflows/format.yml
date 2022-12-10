@@ -11,20 +11,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2.2.2
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
         with:
           node-version: 16
+          cache: "yarn"
 
       - name: Install dependencies
-        run: pnpm install
+        run: yarn install --frozen-lockfile
 
       - name: Format
-        run: pnpm run format
+        run: yarn format
 
       - name: Add, Commit and Push
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: 'Format'
+          commit_message: "Format"
