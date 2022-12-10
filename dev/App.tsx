@@ -1,28 +1,78 @@
-import type { Component } from "solid-js";
+import { Component, createResource, createSignal, untrack } from "solid-js";
 import logo from "./logo.svg";
 import styles from "./App.module.css";
-import { Hello } from "../src";
+import { Region, Waveform } from "../src";
 
 const App: Component = () => {
+  const [url, setUrl] = createSignal("/jam_session.m4a");
+
+  const [inputUrl, setInputUrl] = createSignal(untrack(() => url()));
+
+  const [audioResource] = createResource(url, async (url) => {
+    const context = new AudioContext();
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return context.decodeAudioData(arrayBuffer);
+  });
+
+  const [position, setPosition] = createSignal(0);
+  const [zoom, setZoom] = createSignal(1);
+  const [scale, setScale] = createSignal(1);
+  const [logScale, setLogScale] = createSignal(false);
+  const [regions, setRegions] = createSignal<Region[]>([]);
+
   return (
     <div class={styles.App}>
-      <header class={styles.header}>
-        <img src={logo} class={styles.logo} alt="logo" />
-        <h1>
-          <Hello></Hello>
-        </h1>
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          class={styles.link}
-          href="https://github.com/solidjs/solid"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn Solid
-        </a>
-      </header>
+      <Waveform
+        style={{ height: "300px" }}
+        buffer={audioResource()}
+        position={position()}
+        regions={regions()}
+        zoom={zoom()}
+        scale={scale()}
+        logScale={logScale()}
+        onPositionChange={setPosition}
+        onZoomChange={setZoom}
+        onScaleChange={setScale}
+        onUpdateRegion={(region) => {
+          const index = regions().findIndex(({ id }) => id === region.id);
+          setRegions([...regions().slice(0, index), region, ...regions().slice(index + 1)]);
+        }}
+        onCreateRegion={(region) => {
+          setRegions([...regions(), region]);
+        }}
+        strokeStyle="#121212"
+      />
+
+      <form>
+        <div>
+          <label>Audio URL:</label>
+          <input value={inputUrl()} onChange={(event) => setInputUrl(event.currentTarget.value)} />
+          <button onClick={() => setUrl(inputUrl())}>Update</button>
+        </div>
+
+        <div>
+          <label>Position:</label>
+          <input value={position().toFixed(3)} />
+        </div>
+
+        <div>
+          <label>Zoom:</label>
+          <input value={zoom().toFixed(3)} />
+        </div>
+
+        <div>
+          <label>Scale:</label>
+          <input value={scale().toFixed(3)} />
+        </div>
+
+        <div>
+          <label>
+            Logarithmic
+            <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
+          </label>
+        </div>
+      </form>
     </div>
   );
 };

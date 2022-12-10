@@ -1,17 +1,17 @@
 {
   "version": "0.0.0",
-  "name": "{{name_of_lib}}",
-  "description": "{{desc_of_lib}}",
+  "name": "solid-waveform",
+  "description": "Waveform UI Control for Solid JS apps",
   "license": "MIT",
-  "author": "{{me}}",
+  "author": "jdachtera",
   "contributors": [],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/{{me}}/{{name_of_lib}}.git"
+    "url": "git+https://github.com/jdachtera/solid-waveform.git"
   },
-  "homepage": "https://github.com/{{me}}/{{name_of_lib}}#readme",
+  "homepage": "https://github.com/jdachtera/solid-waveform#readme",
   "bugs": {
-    "url": "https://github.com/{{me}}/{{name_of_lib}}/issues"
+    "url": "https://github.com/jdachtera/solid-waveform/issues"
   },
   "private": false,
   "sideEffects": false,
@@ -38,9 +38,9 @@
     "dev": "vite serve dev",
     "test": "echo \"test not setup\"",
     "build": "rollup -c",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "yarn build",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
-    "update-deps": "taze -w && pnpm i",
+    "update-deps": "taze -w && yarn",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {},
@@ -48,17 +48,17 @@
     "solid-js": ">=1.0.0"
   },
   "devDependencies": {
-    "prettier": "2.7.1",
-    "rollup": "^2.77.2",
-    "rollup-preset-solid": "^1.4.0",
-    "typescript": "^4.7.4",
-    "solid-js": "^1.4.8",
-    "taze": "^0.7.6",
-    "vite": "^3.0.4",
-    "vite-plugin-solid": "^2.3.0"
+    "prettier": "2.8.1",
+    "rollup": "^3.7.2",
+    "rollup-preset-solid": "^2.0.1",
+    "solid-js": "^1.6.4",
+    "taze": "^0.8.4",
+    "typescript": "^4.9.4",
+    "vite": "^4.0.0",
+    "vite-plugin-solid": "^2.5.0"
   },
   "keywords": [
     "solid"
   ],
-  "packageManager": "pnpm@7.5.0"
+  "packageManager": "yarn@7.5.0"
 }

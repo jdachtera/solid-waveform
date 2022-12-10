@@ -1,36 +1,27 @@
 <p>
-  <img width="100%" src="https://assets.solidjs.com/banner?type={{name_of_lib}}&background=tiles&project=%20" alt="{{name_of_lib}}">
+  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-waveform&background=tiles&project=%20" alt="solid-waveform">
 </p>
 
-# {{name_of_lib}}
+# solid-waveform
 
-[![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
+[![pnpm](https://img.shields.io/badge/maintained%20with-yarn-cc00ff.svg?style=for-the-badge&logo=yarn)](https://yarnpkg.com/)
 
-{{desc_of_lib}}
-
-> **Note** After using this template, you have to search and replace all `{{name_of_lib}}` and similar strings
-> with appropriate texts.
->
-> `{{name_of_lib}}` should be a **kebab-case** string representing the name of you monorepo.
->
-> `{{desc_of_lib}}` should be a **Normal case** string with the description of the repository.
->
-> `{{me}}` should be a **kebab-case** string from your profile URL.
+Waveform UI Control for Solid JS apps
 
 ## Quick start
 
 Install it:
 
 ```bash
-npm i {{name_of_lib}}
+npm i solid-waveform
 # or
-yarn add {{name_of_lib}}
+yarn add solid-waveform
 # or
-pnpm add {{name_of_lib}}
+pnpm add solid-waveform
 ```
 
 Use it:
 
 ```tsx
-import {{name_of_lib}} from '{{name_of_lib}}'
+import { Waveform } from "solid-waveform";
 ```
