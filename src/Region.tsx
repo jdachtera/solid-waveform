@@ -54,7 +54,6 @@ export const Region = (props: {
   };
 
   const handleMouseUp = (event: MouseEvent) => {
-    console.log("handleMouseUp");
     setState({ initialRegion: undefined });
     onClickRegion(event);
   };
