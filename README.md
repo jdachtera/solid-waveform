@@ -6,6 +6,8 @@
 
 [![yarn](https://img.shields.io/badge/maintained%20with-yarn-cc00ff.svg?style=for-the-badge&logo=yarn)](https://yarnpkg.com/)
 
+[Demo](https://solid-waveform.netlify.app/)
+
 Waveform UI Control for Solid JS apps
 
 ## Quick start
