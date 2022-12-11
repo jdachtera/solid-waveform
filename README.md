@@ -24,6 +24,8 @@ pnpm add solid-waveform
 
 Use it:
 
+### Interactive waveform
+
 ```tsx
 import { Waveform, Region } from "solid-waveform";
 
@@ -53,4 +55,18 @@ const [regions, setRegions] = createSignal<Region[]>([]);
   onClickRegion={...}
   strokeStyle="#121212"
 />;
+```
+
+### Oscilloscope
+
+```tsx
+import { Oscilloscope } from "solid-waveform";
+
+const analyzerNode = new AnalyzerNode(...)
+
+<Oscilloscope
+  style={{ height: "300px" }}
+  analyzerNode={analyzerNode}
+/>;
+
 ```

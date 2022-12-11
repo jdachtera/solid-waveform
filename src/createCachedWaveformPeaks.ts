@@ -100,7 +100,11 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
   };
 };
 
-const getPeakAt = (data: WaveformData, samplesPerPx: number, x: number): [number, number] => {
+export const getPeakAt = (
+  data: WaveformData,
+  samplesPerPx: number,
+  x: number,
+): [number, number] => {
   let max = 0;
   let min = 0;
 

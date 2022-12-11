@@ -1,11 +1,23 @@
 import { Component, createResource, createSignal, For, Index, untrack } from "solid-js";
-import logo from "./logo.svg";
+
 import styles from "./App.module.css";
-import { Region, Waveform } from "../src";
+import { Region, Waveform, Oscilloscope } from "../src";
 
 const App: Component = () => {
   let audioSource: AudioBufferSourceNode | undefined;
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+  const gainNode = new GainNode(audioCtx, {
+    gain: 0.5,
+  });
+
+  const analyser = new AnalyserNode(audioCtx, {
+    smoothingTimeConstant: 1,
+    fftSize: 8192,
+  });
+
+  gainNode.connect(analyser);
+  analyser.connect(audioCtx.destination);
 
   const [url, setUrl] = createSignal("/jam_session.m4a");
   const [inputUrl, setInputUrl] = createSignal(untrack(() => url()));
@@ -28,7 +40,7 @@ const App: Component = () => {
     audioSource = new AudioBufferSourceNode(audioCtx, {
       buffer: audioBuffer(),
     });
-    audioSource.connect(audioCtx.destination);
+    audioSource.connect(gainNode);
     audioSource.start(0, region.start, region.end - region.start);
   };
 
@@ -56,6 +68,8 @@ const App: Component = () => {
         onClickRegion={playRegion}
         strokeStyle="#121212"
       />
+
+      <Oscilloscope style={{ height: "300px" }} analyzerNode={analyser}></Oscilloscope>
 
       <h2>Info:</h2>
       <button onClick={() => audioSource?.stop()}>Stop Audio</button>

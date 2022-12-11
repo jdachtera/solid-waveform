@@ -37,7 +37,7 @@ export const drawWaveformWithPeaks = async ({
   context,
   scale = 1,
   strokeStyle = "rgb(0,0,0)",
-  logScale,
+  logScale = false,
 }: {
   peaks: number[][];
   peaksOpacity: number;
@@ -46,7 +46,7 @@ export const drawWaveformWithPeaks = async ({
   context: CanvasRenderingContext2D;
   scale?: number;
   strokeStyle?: string | CanvasGradient | CanvasPattern;
-  logScale: boolean;
+  logScale?: boolean;
 }) => {
   const startY = height / 2;
 

@@ -12,6 +12,7 @@ import {
 import { Region } from "./Region";
 import createCachedWaveformPeaks from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
+import { clamp } from "./helpers";
 
 export function randomColor() {
   const randR = Math.floor(Math.random() * (255 - 0 + 1) + 0);
@@ -21,7 +22,7 @@ export function randomColor() {
   return color;
 }
 
-export const Waveform = (
+const Waveform = (
   allProps: {
     buffer?: AudioBuffer;
     position: number;
@@ -342,6 +343,4 @@ export const Waveform = (
   );
 };
 
-const clamp = (value: number, min: number, max: number) => {
-  return Math.max(min, Math.min(max, value));
-};
+export default Waveform;
