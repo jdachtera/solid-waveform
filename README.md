@@ -25,5 +25,32 @@ pnpm add solid-waveform
 Use it:
 
 ```tsx
-import { Waveform } from "solid-waveform";
+import { Waveform, Region } from "solid-waveform";
+
+const [audioBuffer] = createResource(...);
+
+const [position, setPosition] = createSignal(0);
+const [zoom, setZoom] = createSignal(1);
+const [scale, setScale] = createSignal(1);
+const [logScale, setLogScale] = createSignal(false);
+const [regions, setRegions] = createSignal<Region[]>([]);
+
+<Waveform
+  style={{ height: "300px" }}
+
+  buffer={audioBuffer()}
+  position={position()}
+  regions={regions()}
+  zoom={zoom()}
+  scale={scale()}
+
+  onPositionChange={setPosition}
+  onZoomChange={setZoom}
+  onScaleChange={setScale}
+
+  onUpdateRegion={...}
+  onCreateRegion={...}
+  onClickRegion={...}
+  strokeStyle="#121212"
+/>;
 ```

@@ -29,7 +29,7 @@ export const Waveform = (
     scale: number;
     regions?: Region[];
     strokeStyle?: string | CanvasGradient | CanvasPattern;
-    logScale: boolean;
+    logScale?: boolean;
     onPositionChange?: (position: number) => void;
     onZoomChange?: (position: number) => void;
     onScaleChange?: (scale: number) => void;
