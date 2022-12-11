@@ -14,7 +14,6 @@
     "url": "https://github.com/jdachtera/solid-waveform/issues"
   },
   "private": false,
-  "sideEffects": false,
   "type": "module",
   "files": [
     "dist"
