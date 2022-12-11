@@ -1,7 +1,6 @@
-export function drawPeaks(
-  ctx: CanvasRenderingContext2D,
-  peaks: [number, number, number, number][],
-) {
+type PeaksEntry = [x: number, absMinMax: number, minY: number, maxY: number];
+
+export function drawPeaks(ctx: CanvasRenderingContext2D, peaks: PeaksEntry[]) {
   ctx.beginPath();
 
   peaks.forEach(([x1, _, minY, maxY]) => {
@@ -12,10 +11,7 @@ export function drawPeaks(
   ctx.stroke();
 }
 
-export function drawWaveform(
-  ctx: CanvasRenderingContext2D,
-  peaks: [number, number, number, number][],
-) {
+export function drawWaveform(ctx: CanvasRenderingContext2D, peaks: PeaksEntry[]) {
   ctx.beginPath();
 
   for (let i = 0; i < peaks.length - 1; i++) {
@@ -54,15 +50,16 @@ export const drawWaveformWithPeaks = async ({
 }) => {
   const startY = height / 2;
 
-  const scaledPeaks = peaks.map(([min, max], i, peaks): [number, number, number, number] => {
-    const minValue = logScale ? -Math.log10(-min) : min;
-    const maxValue = logScale ? Math.log10(max) : max;
+  const scaledPeaks = peaks.map(([min, max], i, peaks): PeaksEntry => {
+    const minValue = logScale ? -Math.log10(-min * 20) * 0.7 : min;
+    const maxValue = logScale ? Math.log10(max * 20) * 0.7 : max;
 
     const x = (i / peaks.length) * width;
 
     const minY = startY + minValue * startY * scale;
     const maxY = startY + maxValue * startY * scale;
-    const absMaxY = Math.abs(minValue) > Math.abs(maxValue) ? minY : maxY;
+
+    const absMaxY = Math.abs(min) > Math.abs(max) ? minY : maxY;
 
     return [x, absMaxY, minY, maxY];
   });
