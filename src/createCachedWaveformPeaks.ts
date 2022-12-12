@@ -108,6 +108,12 @@ export const getPeakAt = (
   let max = 0;
   let min = 0;
 
+  if (samplesPerPx < 1) {
+    const index = Math.round(x * samplesPerPx);
+    const value = data[index];
+    return [value < 0 ? value : 0, value > 0 ? value : 0];
+  }
+
   for (let i = 0; i < samplesPerPx; i++) {
     const index = Math.floor(x * samplesPerPx) + i;
 

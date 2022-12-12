@@ -1,28 +1,43 @@
-import { createMemo, JSX, splitProps } from "solid-js";
+import { createMemo, JSX, mergeProps, splitProps } from "solid-js";
 import { onCleanup, onMount } from "solid-js";
 import { getPeakAt } from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 
-const Oscilloscope = (allProps: { analyzerNode: AnalyserNode } & JSX.IntrinsicElements["div"]) => {
-  const [props, divProps] = splitProps(allProps, ["analyzerNode"]);
+const Oscilloscope = (
+  allProps: {
+    analyzerNode: AnalyserNode;
+    scale?: number;
+    slowNessFactor?: number;
+  } & JSX.IntrinsicElements["div"],
+) => {
+  const propsWithDefaults = mergeProps(allProps, { slowNessFactor: 250, scale: 1 });
+  const [props, divProps] = splitProps(propsWithDefaults, [
+    "analyzerNode",
+    "slowNessFactor",
+    "scale",
+  ]);
   let animationFrame: number;
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
   let dimensions: DOMRect | undefined;
 
-  const dataArray = createMemo(() => new Uint8Array(props.analyzerNode.frequencyBinCount));
+  const dataArray = createMemo(() => new Float32Array(props.analyzerNode.frequencyBinCount));
 
   let lastDraw = 0;
+  let peaks: [number, number][] = [];
   const draw = () => {
     animationFrame = requestAnimationFrame(draw);
 
     const now = Date.now();
+    const timePassedSinceLastRender = now - lastDraw;
 
-    if (now - lastDraw < 30) return;
     if (!dimensions?.width || !context) return;
 
     lastDraw = now;
+
+    const percentage =
+      props.slowNessFactor > 0 ? timePassedSinceLastRender / props.slowNessFactor : 1;
 
     const data = dataArray();
 
@@ -35,16 +50,19 @@ const Oscilloscope = (allProps: { analyzerNode: AnalyserNode } & JSX.IntrinsicEl
 
     context.scale(dpi, dpi);
 
-    const samplesPerPx = Math.floor(data.length / dimensions.width);
+    props.analyzerNode.getFloatTimeDomainData(data);
 
-    props.analyzerNode.getByteTimeDomainData(data);
-
-    const peaks = [];
-
-    const normalizedData = [...data.values()].map((y) => (y - 128) / 128);
+    const samplesPerPx = data.length / dimensions.width;
+    const previousPeaks = peaks;
+    peaks = [];
 
     for (let x = 0; x < dimensions.width; x++) {
-      peaks.push(getPeakAt(normalizedData, samplesPerPx, x));
+      const peak = getPeakAt(data, samplesPerPx, x);
+
+      peaks.push([
+        peak[0] * percentage + (previousPeaks?.[x]?.[0] ?? 0) * (1 - percentage),
+        peak[1] * percentage + (previousPeaks?.[x]?.[1] ?? 0) * (1 - percentage),
+      ]);
     }
 
     drawWaveformWithPeaks({
@@ -52,6 +70,8 @@ const Oscilloscope = (allProps: { analyzerNode: AnalyserNode } & JSX.IntrinsicEl
       peaks,
 
       peaksOpacity: clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1),
+      logScale: true,
+      scale: props.scale,
 
       width,
       height,

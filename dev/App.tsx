@@ -13,7 +13,7 @@ const App: Component = () => {
 
   const analyser = new AnalyserNode(audioCtx, {
     smoothingTimeConstant: 1,
-    fftSize: 8192,
+    fftSize: 2048,
   });
 
   gainNode.connect(analyser);
@@ -69,7 +69,7 @@ const App: Component = () => {
         strokeStyle="#121212"
       />
 
-      <Oscilloscope style={{ height: "300px" }} analyzerNode={analyser}></Oscilloscope>
+      <Oscilloscope style={{ height: "300px" }} analyzerNode={analyser} scale={2}></Oscilloscope>
 
       <h2>Info:</h2>
       <button onClick={() => audioSource?.stop()}>Stop Audio</button>
