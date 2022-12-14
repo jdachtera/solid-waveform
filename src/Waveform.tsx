@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import { JSX, mergeProps } from "solid-js";
 import {
   onCleanup,
   onMount,
@@ -31,7 +31,10 @@ const Waveform = (
     regions?: Region[];
     strokeStyle?: string | CanvasGradient | CanvasPattern;
     logScale?: boolean;
+    playHeadPosition?: number;
+    followPlayHead?: boolean;
     onPositionChange?: (position: number) => void;
+    onPlayHeadPositionChange?: (playHeadPosition: number) => void;
     onZoomChange?: (position: number) => void;
     onScaleChange?: (scale: number) => void;
     onCreateRegion?: (region: Region) => void;
@@ -40,15 +43,22 @@ const Waveform = (
     onDblClickRegion?: (region: Region, event: MouseEvent) => void;
   } & JSX.IntrinsicElements["div"],
 ) => {
-  const [props, divProps] = splitProps(allProps, [
+  const propsWithDefauls = mergeProps(
+    { logScale: false, playHeadPosition: 0, followPlayHead: false },
+    allProps,
+  );
+  const [props, divProps] = splitProps(propsWithDefauls, [
     "strokeStyle",
     "buffer",
     "position",
     "zoom",
     "scale",
     "logScale",
+    "playHeadPosition",
+    "followPlayHead",
     "onScaleChange",
     "onPositionChange",
+    "onPlayHeadPositionChange",
     "onZoomChange",
     "onCreateRegion",
     "onUpdateRegion",
@@ -63,7 +73,7 @@ const Waveform = (
   let context: CanvasRenderingContext2D | undefined;
 
   const rawData = createMemo(() => props.buffer?.getChannelData(0));
-  const duration = createMemo(() => allProps.buffer?.duration ?? 0);
+  const duration = createMemo(() => props.buffer?.duration ?? 0);
   const endTime = createMemo(() => props.position + duration() / props.zoom);
   const dataLength = createMemo(() => rawData()?.length ?? 0);
   const visibleLength = createMemo(() =>
@@ -136,9 +146,7 @@ const Waveform = (
     const strokeStyle = props.strokeStyle;
     const logScale = props.logScale;
 
-    cancelAnimationFrame(animationFrame);
-
-    animationFrame = requestAnimationFrame(async () => {
+    requestAnimationFrame(async () => {
       if (!context) return;
 
       const peaks = await cachedWaveformPeaks().getPeaks({
@@ -160,6 +168,15 @@ const Waveform = (
         logScale,
       });
     });
+  });
+
+  createEffect(() => {
+    if (!props.followPlayHead) return;
+
+    const maxPosition = duration() - duration() / props.zoom;
+    const newPosition = clamp(props.playHeadPosition - duration() / props.zoom / 2, 0, maxPosition);
+
+    props.onPositionChange?.(newPosition);
   });
 
   const handleWheel = (event: WheelEvent & { currentTarget: Element }) => {
@@ -266,13 +283,12 @@ const Waveform = (
     const maxPosition = duration() - duration() / props.zoom;
     const scrollAmount = props.position / maxPosition;
 
+    const { width } = canvasDimensions();
+
     if (!scrollDivRef || !scrollDivRef.parentElement) return;
 
-    const { clientWidth } = scrollDivRef.parentElement;
-
-    scrollDivRef.parentElement.scrollLeft = scrollAmount * (clientWidth * props.zoom - clientWidth);
-
-    scrollDivRef.style.width = `${clientWidth * props.zoom}px`;
+    scrollDivRef.parentElement.scrollLeft = scrollAmount * (width * props.zoom - width);
+    scrollDivRef.style.width = `${width * props.zoom}px`;
   });
 
   return (
@@ -325,6 +341,38 @@ const Waveform = (
           style={{ height: "100%", position: "relative" }}
           onMouseDown={handleMouseDown}
         >
+          <div style={{ position: "relative", width: "calc(100% - 2px)", height: "100%" }}>
+            <div
+              style={{
+                position: "absolute",
+                height: "100%",
+                width: "2px",
+                left: `${(props.playHeadPosition / duration()) * 100}%`,
+                "background-color": "green",
+                cursor: "pointer",
+              }}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const handleMouseMove = ({ movementX }: MouseEvent) => {
+                  const { parentElement } = event.currentTarget;
+                  if (!parentElement || !scrollDivRef) return;
+
+                  const percentage =
+                    (event.currentTarget.offsetLeft + movementX) / parentElement.clientWidth!;
+
+                  props.onPlayHeadPositionChange?.(percentage * duration());
+                };
+                const handleMouseUp = (event: MouseEvent) => {
+                  window.removeEventListener("mousemove", handleMouseMove);
+                  window.removeEventListener("mouseup", handleMouseUp);
+                };
+                window.addEventListener("mousemove", handleMouseMove);
+                window.addEventListener("mouseup", handleMouseUp);
+              }}
+            />
+          </div>
+
           <Index each={props.regions}>
             {(region) => (
               <Region
