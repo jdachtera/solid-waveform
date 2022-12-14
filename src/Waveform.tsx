@@ -1,26 +1,10 @@
-import { JSX, mergeProps } from "solid-js";
-import {
-  onCleanup,
-  onMount,
-  createEffect,
-  createMemo,
-  createSignal,
-  splitProps,
-  createUniqueId,
-  Index,
-} from "solid-js";
-import { Region } from "./Region";
+import { JSX, mergeProps, Show } from "solid-js";
+import { onCleanup, onMount, createEffect, createMemo, createSignal, splitProps } from "solid-js";
+
 import createCachedWaveformPeaks from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
-
-export function randomColor() {
-  const randR = Math.floor(Math.random() * (255 - 0 + 1) + 0);
-  const randG = Math.floor(Math.random() * (255 - 0 + 1) + 0);
-  const randB = Math.floor(Math.random() * (255 - 0 + 1) + 0);
-  const color = `rgba(${randR},${randG},${randB},0.8)`;
-  return color;
-}
+import { WaveformContextProvider } from "./context";
 
 const Waveform = (
   allProps: {
@@ -28,25 +12,15 @@ const Waveform = (
     position: number;
     zoom: number;
     scale: number;
-    regions?: Region[];
     strokeStyle?: string | CanvasGradient | CanvasPattern;
     logScale?: boolean;
-    playHeadPosition?: number;
-    followPlayHead?: boolean;
+
     onPositionChange?: (position: number) => void;
-    onPlayHeadPositionChange?: (playHeadPosition: number) => void;
     onZoomChange?: (position: number) => void;
     onScaleChange?: (scale: number) => void;
-    onCreateRegion?: (region: Region) => void;
-    onUpdateRegion?: (region: Region) => void;
-    onClickRegion?: (region: Region, event: MouseEvent) => void;
-    onDblClickRegion?: (region: Region, event: MouseEvent) => void;
   } & JSX.IntrinsicElements["div"],
 ) => {
-  const propsWithDefauls = mergeProps(
-    { logScale: false, playHeadPosition: 0, followPlayHead: false },
-    allProps,
-  );
+  const propsWithDefauls = mergeProps({ logScale: false }, allProps);
   const [props, divProps] = splitProps(propsWithDefauls, [
     "strokeStyle",
     "buffer",
@@ -54,20 +28,12 @@ const Waveform = (
     "zoom",
     "scale",
     "logScale",
-    "playHeadPosition",
-    "followPlayHead",
     "onScaleChange",
     "onPositionChange",
-    "onPlayHeadPositionChange",
     "onZoomChange",
-    "onCreateRegion",
-    "onUpdateRegion",
-    "onClickRegion",
-    "onDblClickRegion",
-    "regions",
+    "children",
   ]);
 
-  let animationFrame: number;
   let scrollDivRef: HTMLDivElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
@@ -88,7 +54,6 @@ const Waveform = (
   const cachedWaveformPeaks = createMemo(() => createCachedWaveformPeaks(rawData() ?? []));
 
   const [progress, setProgress] = createSignal(0);
-  const [newRegion, setNewRegion] = createSignal<Region>();
 
   const updateDimensions = () => {
     const { width = 0, height = 0 } = canvasRef?.getBoundingClientRect() ?? {};
@@ -121,18 +86,6 @@ const Waveform = (
 
     context.scale(dpi, dpi);
   });
-
-  const getPosition = (clientX: number) => {
-    const parent = scrollDivRef?.parentElement;
-    if (!parent) return 0;
-
-    const width = scrollDivRef?.clientWidth ?? 0;
-    const rect = parent?.getBoundingClientRect();
-
-    const position = ((clientX - rect.left + parent.scrollLeft) / width) * duration();
-
-    return position;
-  };
 
   createEffect(() => {
     if (!dataLength()) return;
@@ -168,15 +121,6 @@ const Waveform = (
         logScale,
       });
     });
-  });
-
-  createEffect(() => {
-    if (!props.followPlayHead) return;
-
-    const maxPosition = duration() - duration() / props.zoom;
-    const newPosition = clamp(props.playHeadPosition - duration() / props.zoom / 2, 0, maxPosition);
-
-    props.onPositionChange?.(newPosition);
   });
 
   const handleWheel = (event: WheelEvent & { currentTarget: Element }) => {
@@ -231,50 +175,6 @@ const Waveform = (
     props.onPositionChange?.(maxPosition * scrollAmount);
   };
 
-  const handleMouseDown = (event: MouseEvent) => {
-    if (props.regions === undefined) return;
-
-    event.preventDefault();
-    const mouseDownPosition = getPosition(event.clientX);
-
-    const onMouseMove = (event: MouseEvent) => {
-      const mouseMovePosition = getPosition(event.clientX);
-
-      const createdRegion = newRegion();
-      if (!createdRegion) {
-        const id = createUniqueId();
-        const color = randomColor();
-
-        const region = {
-          id,
-          color,
-          start: Math.min(mouseDownPosition, mouseMovePosition),
-          end: Math.max(mouseDownPosition, mouseMovePosition),
-        };
-
-        setNewRegion(region);
-        props.onCreateRegion?.(region);
-      } else {
-        const region = {
-          ...createdRegion,
-          start: Math.min(mouseDownPosition, mouseMovePosition),
-          end: Math.max(mouseDownPosition, mouseMovePosition),
-        };
-
-        props.onUpdateRegion?.(region);
-      }
-    };
-
-    const onMouseUp = () => {
-      setNewRegion(undefined);
-      scrollDivRef?.removeEventListener("mousemove", onMouseMove);
-      scrollDivRef?.removeEventListener("mouseup", onMouseUp);
-    };
-
-    scrollDivRef?.addEventListener("mousemove", onMouseMove);
-    scrollDivRef?.addEventListener("mouseup", onMouseUp);
-  };
-
   createEffect(() => {
     cachedWaveformPeaks().warmup((progress) => setProgress(progress));
   });
@@ -293,6 +193,7 @@ const Waveform = (
 
   return (
     <div
+      class="Waveform"
       {...divProps}
       style={{
         ...(typeof divProps.style === "object" && divProps.style),
@@ -311,19 +212,22 @@ const Waveform = (
         }}
       />
 
-      <div
-        style={{
-          display: progress() === 0 || progress() === 1 ? "none" : "flex",
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100%",
-          "justify-content": "center",
-          "align-items": "center",
-          background: "rgba(0,0,0,0.1)",
-        }}
-      />
+      <Show when={!(progress() === 0 || progress() === 1)}>
+        <div
+          class="Waveform-Spinner"
+          style={{
+            display: "flex",
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
+            "justify-content": "center",
+            "align-items": "center",
+            background: "rgba(0,0,0,0.1)",
+          }}
+        />
+      </Show>
 
       <div
         style={{
@@ -336,55 +240,18 @@ const Waveform = (
         }}
         onScroll={handleScroll}
       >
-        <div
-          ref={scrollDivRef}
-          style={{ height: "100%", position: "relative" }}
-          onMouseDown={handleMouseDown}
-        >
-          <div style={{ position: "relative", width: "calc(100% - 2px)", height: "100%" }}>
-            <div
-              style={{
-                position: "absolute",
-                height: "100%",
-                width: "2px",
-                left: `${(props.playHeadPosition / duration()) * 100}%`,
-                "background-color": "green",
-                cursor: "pointer",
-              }}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const handleMouseMove = ({ movementX }: MouseEvent) => {
-                  const { parentElement } = event.currentTarget;
-                  if (!parentElement || !scrollDivRef) return;
-
-                  const percentage =
-                    (event.currentTarget.offsetLeft + movementX) / parentElement.clientWidth!;
-
-                  props.onPlayHeadPositionChange?.(percentage * duration());
-                };
-                const handleMouseUp = (event: MouseEvent) => {
-                  window.removeEventListener("mousemove", handleMouseMove);
-                  window.removeEventListener("mouseup", handleMouseUp);
-                };
-                window.addEventListener("mousemove", handleMouseMove);
-                window.addEventListener("mouseup", handleMouseUp);
-              }}
-            />
-          </div>
-
-          <Index each={props.regions}>
-            {(region) => (
-              <Region
-                region={region()}
-                duration={duration()}
-                getPosition={getPosition}
-                onUpdateRegion={props.onUpdateRegion}
-                onClickRegion={props.onClickRegion}
-                onDblClickRegion={props.onDblClickRegion}
-              />
-            )}
-          </Index>
+        <div ref={scrollDivRef} style={{ height: "100%", position: "relative" }}>
+          <WaveformContextProvider
+            value={{
+              duration,
+              position: () => props.position,
+              zoom: () => props.zoom,
+              updatePosition: (position) => props.onPositionChange?.(position),
+              dimensions: canvasDimensions,
+            }}
+          >
+            {props.children}
+          </WaveformContextProvider>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import {
 } from "solid-js";
 
 import styles from "./App.module.css";
-import { Region, Waveform, Oscilloscope } from "../src";
+import { Region, PlayHead, Waveform, Oscilloscope, Regions } from "../src";
 
 const Demo: Component = () => {
   let audioSource: AudioBufferSourceNode | undefined;
@@ -42,7 +42,7 @@ const Demo: Component = () => {
 
   const [position, setPosition] = createSignal(0);
   const [playHeadPosition, setPlayHeadPosition] = createSignal(0);
-  const [followPlayHead, setFollowPlayHead] = createSignal(true);
+  const [syncPlayHead, setSyncPlayHead] = createSignal(true);
   const [isPlaying, setIsPlaying] = createSignal(false);
 
   const [zoom, setZoom] = createSignal(1);
@@ -103,31 +103,36 @@ const Demo: Component = () => {
         style={{ height: "300px" }}
         buffer={audioBuffer()}
         position={position()}
-        playHeadPosition={playHeadPosition()}
-        followPlayHead={followPlayHead()}
-        regions={regions()}
         zoom={zoom()}
         scale={scale()}
         logScale={logScale()}
         onPositionChange={setPosition}
-        onPlayHeadPositionChange={(newPlayheadPosition) => {
-          setPlayHeadPosition(newPlayheadPosition);
-          if (isPlaying()) {
-            play(newPlayheadPosition);
-          }
-        }}
         onZoomChange={setZoom}
         onScaleChange={setScale}
-        onUpdateRegion={(region) => {
-          const index = regions().findIndex(({ id }) => id === region.id);
-          setRegions([...regions().slice(0, index), region, ...regions().slice(index + 1)]);
-        }}
-        onCreateRegion={(region) => {
-          setRegions([...regions(), region]);
-        }}
-        onClickRegion={playRegion}
         strokeStyle="#121212"
-      />
+      >
+        <Regions
+          regions={regions()}
+          onUpdateRegion={(region) => {
+            const index = regions().findIndex(({ id }) => id === region.id);
+            setRegions([...regions().slice(0, index), region, ...regions().slice(index + 1)]);
+          }}
+          onCreateRegion={(region) => {
+            setRegions([...regions(), region]);
+          }}
+          onClickRegion={playRegion}
+        />
+        <PlayHead
+          playHeadPosition={playHeadPosition()}
+          sync={syncPlayHead()}
+          onPlayHeadPositionChange={(newPlayheadPosition) => {
+            setPlayHeadPosition(newPlayheadPosition);
+            if (isPlaying()) {
+              play(newPlayheadPosition);
+            }
+          }}
+        />
+      </Waveform>
 
       <Oscilloscope style={{ height: "300px" }} analyzerNode={analyser} scale={2}></Oscilloscope>
 
@@ -148,8 +153,8 @@ const Demo: Component = () => {
         <br />
         <input
           type="checkbox"
-          checked={followPlayHead()}
-          onChange={() => setFollowPlayHead(!followPlayHead())}
+          checked={syncPlayHead()}
+          onChange={() => setSyncPlayHead(!syncPlayHead())}
         />{" "}
         Follow <br />
         <input

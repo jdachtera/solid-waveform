@@ -27,11 +27,12 @@ Use it:
 ### Interactive waveform
 
 ```tsx
-import { Waveform, Region } from "solid-waveform";
+import { Waveform, Regions, PlayHead, Region } from "solid-waveform";
 
 const [audioBuffer] = createResource(...);
 
 const [position, setPosition] = createSignal(0);
+const [playHeadPosition, setPlayHeadPosition] = createSignal(0);
 const [zoom, setZoom] = createSignal(1);
 const [scale, setScale] = createSignal(1);
 const [logScale, setLogScale] = createSignal(false);
@@ -42,7 +43,6 @@ const [regions, setRegions] = createSignal<Region[]>([]);
 
   buffer={audioBuffer()}
   position={position()}
-  regions={regions()}
   zoom={zoom()}
   scale={scale()}
 
@@ -50,11 +50,27 @@ const [regions, setRegions] = createSignal<Region[]>([]);
   onZoomChange={setZoom}
   onScaleChange={setScale}
 
-  onUpdateRegion={...}
-  onCreateRegion={...}
-  onClickRegion={...}
   strokeStyle="#121212"
-/>;
+>
+  <Regions
+    regions={regions()}
+    onUpdateRegion={(region) => {
+      const index = regions().findIndex(({ id }) => id === region.id);
+      setRegions([...regions().slice(0, index), region, ...regions().slice(index + 1)]);
+    }}
+    onCreateRegion={(region) => {
+      setRegions([...regions(), region]);
+    }}
+    onClickRegion={playRegion}
+  />
+  <PlayHead
+    playHeadPosition={playHeadPosition()}
+    sync
+    onPlayHeadPositionChange={(newPlayheadPosition) => {
+      setPlayHeadPosition(newPlayheadPosition);
+    }}
+  />
+</Waveform>;
 ```
 
 ### Oscilloscope
