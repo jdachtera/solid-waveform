@@ -1,5 +1,24 @@
 type PeaksEntry = [x: number, absMinMax: number, minY: number, maxY: number];
 
+export function drawSampleDots(
+  ctx: CanvasRenderingContext2D,
+  peaks: [number, number, number, number][],
+  radius: number,
+) {
+  peaks.forEach(([x1, avgMaxY], index) => {
+    const [, lastPeakAvgMaxY] = peaks[index - 1] ?? [];
+    const [, nextPeakAvgMaxY] = peaks[index + 1] ?? [];
+
+    if (lastPeakAvgMaxY !== undefined && avgMaxY === lastPeakAvgMaxY && avgMaxY === nextPeakAvgMaxY)
+      return;
+
+    ctx.beginPath();
+    ctx.arc(x1, avgMaxY, radius, 0, 360);
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
 export function drawPeaks(ctx: CanvasRenderingContext2D, peaks: PeaksEntry[]) {
   ctx.beginPath();
 
@@ -31,21 +50,35 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, peaks: PeaksEntry[])
 
 export const drawWaveformWithPeaks = async ({
   peaks,
-  peaksOpacity,
+  waveformStyle,
+  peaksStyle,
+  sampleDotsStyle,
   width,
   height,
   context,
   scale = 1,
-  strokeStyle = "rgb(0,0,0)",
   logScale = false,
 }: {
   peaks: number[][];
-  peaksOpacity: number;
+  waveformStyle?: {
+    opacity?: number;
+    strokeStyle?: string | CanvasGradient | CanvasPattern;
+    lineWidth?: number;
+  };
+  peaksStyle?: {
+    opacity?: number;
+    strokeStyle?: string | CanvasGradient | CanvasPattern;
+    lineWidth?: number;
+  };
+  sampleDotsStyle?: {
+    opacity?: number;
+    strokeStyle?: string | CanvasGradient | CanvasPattern;
+    radius?: number;
+  };
   width: number;
   height: number;
   context: CanvasRenderingContext2D;
   scale?: number;
-  strokeStyle?: string | CanvasGradient | CanvasPattern;
   logScale?: boolean;
 }) => {
   const startY = height / 2;
@@ -65,10 +98,24 @@ export const drawWaveformWithPeaks = async ({
   });
 
   context.clearRect(0, 0, width, height);
-  context.strokeStyle = strokeStyle;
-  context.globalAlpha = 1;
-  drawWaveform(context, scaledPeaks);
+  context.strokeStyle = waveformStyle?.strokeStyle ?? "rgb(0,0,0)";
+  context.globalAlpha = waveformStyle?.opacity ?? 1;
+  context.lineWidth = waveformStyle?.lineWidth ?? 1;
 
-  context.globalAlpha = peaksOpacity;
-  drawPeaks(context, scaledPeaks);
+  if (context.globalAlpha) {
+    drawWaveform(context, scaledPeaks);
+  }
+
+  context.strokeStyle = peaksStyle?.strokeStyle ?? "rgb(0,0,0)";
+  context.globalAlpha = peaksStyle?.opacity ?? 1;
+  context.lineWidth = peaksStyle?.lineWidth ?? 1;
+  if (context.globalAlpha) {
+    drawPeaks(context, scaledPeaks);
+  }
+
+  context.strokeStyle = sampleDotsStyle?.strokeStyle ?? "rgb(0,0,0)";
+  context.globalAlpha = sampleDotsStyle?.opacity ?? 1;
+  if (context.globalAlpha) {
+    drawSampleDots(context, scaledPeaks, sampleDotsStyle?.radius ?? 3);
+  }
 };

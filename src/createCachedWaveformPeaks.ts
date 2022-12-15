@@ -1,24 +1,30 @@
 type WaveformData = Float32Array | number[];
+export type WaveformMode = "peak" | "rms";
 
-const createCachedWaveformPeaks = (data: WaveformData) => {
-  const cache: Map<number, Map<number, [number, number]>> = new Map();
+const createCachedWaveformSource = (data: WaveformData) => {
+  const cache: Record<WaveformMode, Map<number, Map<number, [number, number]>>> = {
+    peak: new Map(),
+    rms: new Map(),
+  };
 
-  const getPeaks = async ({
+  const getValues = async ({
     samplesPerPx,
     onProgress,
     start = 0,
     end = Math.ceil(data.length / samplesPerPx),
+    mode = "peak",
   }: {
     samplesPerPx: number;
 
     onProgress?: (progress: number) => void;
     start?: number;
     end?: number;
+    mode: WaveformMode;
   }) => {
     const peaks = [];
 
     for (let x = start; x <= end; x++) {
-      peaks.push(getPeakAtCached(samplesPerPx, x));
+      peaks.push(getValuesAtCached(samplesPerPx, x, mode));
       if (x % 10000 === 0 && onProgress) {
         onProgress?.(x / end);
         await new Promise(requestAnimationFrame);
@@ -28,11 +34,11 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
     return peaks;
   };
 
-  const getPeakAtCached = (samplesPerPx: number, x: number) => {
+  const getValuesAtCached = (samplesPerPx: number, x: number, mode: WaveformMode) => {
     if (samplesPerPx === 1) {
       return [data[x], data[x]];
     }
-    const peaksArray = getOrCreatePeaksCache(samplesPerPx);
+    const peaksArray = getOrCreatePeaksCache(samplesPerPx, mode);
 
     if (!peaksArray.has(x)) {
       const multiplicator = 2;
@@ -44,7 +50,7 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
 
         const start = Math.round((x * samplesPerPx) / roughSamples);
         for (let i = 0; i < multiplicator; i++) {
-          const value = getPeakAtCached(roughSamples, start + i);
+          const value = getValuesAtCached(roughSamples, start + i, mode);
           if (value[1] > max) {
             max = value[1];
           }
@@ -55,7 +61,7 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
 
         peaksArray.set(x, [min, max]);
       } else {
-        peaksArray.set(x, getPeakAt(data, samplesPerPx, x));
+        peaksArray.set(x, getPeakAt(data, samplesPerPx, x, mode));
       }
     }
 
@@ -63,7 +69,7 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
     return peaksArray.get(x)!;
   };
 
-  const warmup = async (onProgress: (progress: number) => void) => {
+  const warmup = async (mode: WaveformMode, onProgress: (progress: number) => void) => {
     onProgress(1);
 
     const cachedSteps = Array.from({
@@ -74,29 +80,30 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
 
     await cachedSteps.reduce(async (prev, samplesPerPx, i) => {
       await prev;
-      await getPeaks({
+      await getValues({
         samplesPerPx,
         onProgress: (progress) => {
           onProgress((i + progress) / cachedSteps.length);
         },
+        mode,
       });
     }, Promise.resolve());
 
     onProgress(1);
   };
 
-  const getOrCreatePeaksCache = (samplesPerPx: number) => {
-    if (!cache.has(samplesPerPx)) {
-      cache.set(samplesPerPx, new Map());
+  const getOrCreatePeaksCache = (samplesPerPx: number, mode: WaveformMode) => {
+    if (!cache[mode].has(samplesPerPx)) {
+      cache[mode].set(samplesPerPx, new Map());
     }
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return cache.get(samplesPerPx)!;
+    return cache[mode].get(samplesPerPx)!;
   };
 
   return {
     warmup,
-    getPeaks,
+    getValues,
   };
 };
 
@@ -104,21 +111,28 @@ export const getPeakAt = (
   data: WaveformData,
   samplesPerPx: number,
   x: number,
+  mode: WaveformMode,
 ): [number, number] => {
   let max = 0;
   let min = 0;
 
-  if (samplesPerPx < 1) {
-    const indexCeil = Math.ceil(x * samplesPerPx);
-    const indexFloor = Math.floor(x * samplesPerPx);
+  if (samplesPerPx <= 1) {
+    if (mode === "peak") {
+      const indexCeil = Math.ceil(x * samplesPerPx);
+      const indexFloor = Math.floor(x * samplesPerPx);
 
-    const ratio = x % 1;
-    const valueCeil = data[indexCeil];
-    const valueFloor = data[indexFloor];
+      const ratio = x % 1;
+      const valueCeil = data[indexCeil];
+      const valueFloor = data[indexFloor];
 
-    const value = valueCeil * ratio + valueFloor * (1 - ratio);
+      const value = valueCeil * ratio + valueFloor * (1 - ratio);
 
-    return [value < 0 ? value : 0, value > 0 ? value : 0];
+      return [value < 0 ? value : 0, value > 0 ? value : 0];
+    } else {
+      const index = Math.round(x * samplesPerPx);
+      const value = data[index];
+      return [value < 0 ? value : 0, value > 0 ? value : 0];
+    }
   }
 
   for (let i = 0; i < samplesPerPx; i++) {
@@ -128,14 +142,26 @@ export const getPeakAt = (
 
     const value = data[index];
 
-    if (value > max) {
-      max = value;
-    } else if (value < min) {
-      min = value;
+    if (mode === "peak") {
+      if (value > max) {
+        max = value;
+      } else if (value < min) {
+        min = value;
+      }
+    } else {
+      if (value > max) {
+        max += Math.pow(value, 2) / samplesPerPx;
+      } else if (value < min) {
+        min += Math.pow(value, 2) / samplesPerPx;
+      }
     }
   }
 
-  return [min, max];
+  if (mode === "peak") {
+    return [min, max];
+  } else {
+    return [-Math.sqrt(min), Math.sqrt(max)];
+  }
 };
 
-export default createCachedWaveformPeaks;
+export default createCachedWaveformSource;

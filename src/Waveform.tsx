@@ -1,7 +1,7 @@
 import { JSX, mergeProps, Show } from "solid-js";
 import { onCleanup, onMount, createEffect, createMemo, createSignal, splitProps } from "solid-js";
 
-import createCachedWaveformPeaks from "./createCachedWaveformPeaks";
+import createCachedWaveformSource, { WaveformMode } from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
@@ -14,14 +14,19 @@ const Waveform = (
     zoom: number;
     scale: number;
     strokeStyle?: string | CanvasGradient | CanvasPattern;
+    lineWidth?: number;
     logScale?: boolean;
+    mode?: WaveformMode;
 
     onPositionChange?: (position: number) => void;
     onZoomChange?: (position: number) => void;
     onScaleChange?: (scale: number) => void;
   } & JSX.IntrinsicElements["div"],
 ) => {
-  const propsWithDefauls = mergeProps({ logScale: false }, allProps);
+  const propsWithDefauls = mergeProps(
+    { logScale: false, mode: "peak" as WaveformMode, lineWidth: 1 },
+    allProps,
+  );
   const [props, divProps] = splitProps(propsWithDefauls, [
     "strokeStyle",
     "buffer",
@@ -29,6 +34,8 @@ const Waveform = (
     "zoom",
     "scale",
     "logScale",
+    "mode",
+    "lineWidth",
     "onScaleChange",
     "onPositionChange",
     "onZoomChange",
@@ -57,7 +64,7 @@ const Waveform = (
     top: 0,
   });
 
-  const cachedWaveformPeaks = createMemo(() => createCachedWaveformPeaks(rawData() ?? []));
+  const cachedWaveformPeaks = createMemo(() => createCachedWaveformSource(rawData() ?? []));
 
   const [progress, setProgress] = createSignal(0);
 
@@ -93,8 +100,11 @@ const Waveform = (
     context.scale(dpi, dpi);
   });
 
+  let animationFrame: number;
+  let animationFrameScheduleTime = 0;
   createEffect(() => {
     if (!dataLength()) return;
+    if (!context) return;
     const { height, width } = canvasDimensions();
 
     const samplesPerPx = visibleLength() / width;
@@ -104,14 +114,23 @@ const Waveform = (
     const scale = props.scale;
     const strokeStyle = props.strokeStyle;
     const logScale = props.logScale;
+    const mode = props.mode;
+    const sampleDotsOpacity = samplesPerPx < 100 / width ? 1 : 0;
 
-    requestAnimationFrame(async () => {
+    const now = window.performance.now();
+    if (now - animationFrameScheduleTime < 0.5) {
+      cancelAnimationFrame(animationFrame);
+    }
+
+    animationFrameScheduleTime = now;
+    animationFrame = requestAnimationFrame(async () => {
       if (!context) return;
 
-      const peaks = await cachedWaveformPeaks().getPeaks({
+      const peaks = await cachedWaveformPeaks().getValues({
         samplesPerPx,
         start,
         end,
+        mode,
       });
 
       drawWaveformWithPeaks({
@@ -122,8 +141,21 @@ const Waveform = (
         height,
         scale,
 
-        peaksOpacity,
-        strokeStyle,
+        peaksStyle: {
+          opacity: peaksOpacity,
+          strokeStyle,
+          lineWidth: devicePixelRatio * props.lineWidth,
+        },
+        waveformStyle: {
+          opacity: 1 - peaksOpacity,
+          strokeStyle,
+          lineWidth: devicePixelRatio * props.lineWidth,
+        },
+        sampleDotsStyle: {
+          opacity: sampleDotsOpacity,
+          strokeStyle,
+          radius: props.lineWidth * devicePixelRatio * 2,
+        },
         logScale,
       });
     });
@@ -212,7 +244,7 @@ const Waveform = (
   });
 
   createEffect(() => {
-    cachedWaveformPeaks().warmup((progress) => setProgress(progress));
+    cachedWaveformPeaks().warmup(props.mode, (progress) => setProgress(progress));
   });
 
   const getContextValue = () => ({

@@ -1,6 +1,6 @@
 import { createMemo, JSX, mergeProps, splitProps } from "solid-js";
 import { onCleanup, onMount } from "solid-js";
-import { getPeakAt } from "./createCachedWaveformPeaks";
+import { getPeakAt, WaveformMode } from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 
@@ -8,14 +8,26 @@ const Oscilloscope = (
   allProps: {
     analyzerNode: AnalyserNode;
     scale?: number;
+    strokeStyle?: string | CanvasGradient | CanvasPattern;
+    lineWidth?: number;
     slowNessFactor?: number;
+    mode: WaveformMode;
   } & JSX.IntrinsicElements["div"],
 ) => {
-  const propsWithDefaults = mergeProps(allProps, { slowNessFactor: 250, scale: 1 });
+  const propsWithDefaults = mergeProps(allProps, {
+    slowNessFactor: 250,
+    scale: 1,
+    mode: "peak" as WaveformMode,
+    lineWidth: 1,
+    strokeStyle: "rgb(0,0,0)" as string | CanvasGradient | CanvasPattern,
+  });
   const [props, divProps] = splitProps(propsWithDefaults, [
     "analyzerNode",
     "slowNessFactor",
     "scale",
+    "mode",
+    "lineWidth",
+    "strokeStyle",
   ]);
   let animationFrame: number;
   let canvasRef: HTMLCanvasElement | undefined;
@@ -57,7 +69,7 @@ const Oscilloscope = (
     peaks = [];
 
     for (let x = 0; x < dimensions.width; x++) {
-      const peak = getPeakAt(data, samplesPerPx, x);
+      const peak = getPeakAt(data, samplesPerPx, x, props.mode);
 
       peaks.push([
         peak[0] * percentage + (previousPeaks?.[x]?.[0] ?? 0) * (1 - percentage),
@@ -69,7 +81,19 @@ const Oscilloscope = (
       context,
       peaks,
 
-      peaksOpacity: clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1),
+      peaksStyle: {
+        opacity: clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1),
+        lineWidth: props.lineWidth * devicePixelRatio,
+        strokeStyle: props.strokeStyle,
+      },
+      waveformStyle: {
+        lineWidth: props.lineWidth * devicePixelRatio,
+        strokeStyle: props.strokeStyle,
+      },
+      sampleDotsStyle: {
+        opacity: 0,
+      },
+
       logScale: true,
       scale: props.scale,
 

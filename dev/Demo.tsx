@@ -11,6 +11,7 @@ import {
 
 import styles from "./App.module.css";
 import { Region, PlayHead, Waveform, Oscilloscope, Regions } from "../src";
+import { WaveformMode } from "src/createCachedWaveformPeaks";
 
 const Demo: Component = () => {
   let audioSource: AudioBufferSourceNode | undefined;
@@ -47,6 +48,7 @@ const Demo: Component = () => {
 
   const [zoom, setZoom] = createSignal(1);
   const [scale, setScale] = createSignal(1);
+  const [mode, setMode] = createSignal<WaveformMode>("peak");
   const [logScale, setLogScale] = createSignal(false);
   const [regions, setRegions] = createSignal<Region[]>([]);
 
@@ -106,6 +108,7 @@ const Demo: Component = () => {
         zoom={zoom()}
         scale={scale()}
         logScale={logScale()}
+        mode={mode()}
         onPositionChange={setPosition}
         onZoomChange={setZoom}
         onScaleChange={setScale}
@@ -152,13 +155,28 @@ const Demo: Component = () => {
         />
       </div>
       <div>
+        <label>Mode:</label>
+        <select
+          value={mode()}
+          onChange={(event) =>
+            setMode(
+              event.currentTarget.options[event.currentTarget.selectedIndex].value as WaveformMode,
+            )
+          }
+        >
+          <option value="peak">Peak</option>
+          <option value="rms">RMS</option>
+        </select>
+      </div>
+
+      <div>
         <label>Playhead Position: {playHeadPosition().toFixed(3)}</label>
         <br />
         <input
           type="checkbox"
           checked={syncPlayHead()}
           onChange={() => setSyncPlayHead(!syncPlayHead())}
-        />{" "}
+        />
         Follow <br />
         <input
           type="range"
