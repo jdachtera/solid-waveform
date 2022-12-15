@@ -4,7 +4,8 @@ import { onCleanup, onMount, createEffect, createMemo, createSignal, splitProps 
 import createCachedWaveformPeaks from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
-import { WaveformContextProvider } from "./context";
+import { WaveformContext, WaveformContextProvider } from "./context";
+import { createStore } from "solid-js/store";
 
 const Waveform = (
   allProps: {
@@ -34,7 +35,8 @@ const Waveform = (
     "children",
   ]);
 
-  let scrollDivRef: HTMLDivElement | undefined;
+  let scrollbarDivRef: HTMLDivElement | undefined;
+  let contentDivRef: HTMLDivElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
 
@@ -46,9 +48,13 @@ const Waveform = (
     Math.min(((endTime() - props.position) / duration()) * dataLength(), dataLength()),
   );
 
-  const [canvasDimensions, setCanvasDimensions] = createSignal<Pick<DOMRect, "width" | "height">>({
+  const [canvasDimensions, setCanvasDimensions] = createSignal<
+    Pick<DOMRect, "width" | "height" | "left" | "top">
+  >({
     height: 0,
     width: 0,
+    left: 0,
+    top: 0,
   });
 
   const cachedWaveformPeaks = createMemo(() => createCachedWaveformPeaks(rawData() ?? []));
@@ -56,8 +62,8 @@ const Waveform = (
   const [progress, setProgress] = createSignal(0);
 
   const updateDimensions = () => {
-    const { width = 0, height = 0 } = canvasRef?.getBoundingClientRect() ?? {};
-    setCanvasDimensions({ width, height });
+    const { width = 0, height = 0, left = 0, top = 0 } = canvasRef?.getBoundingClientRect() ?? {};
+    setCanvasDimensions({ width, height, left, top });
   };
 
   const observer = new ResizeObserver(updateDimensions);
@@ -93,7 +99,7 @@ const Waveform = (
 
     const samplesPerPx = visibleLength() / width;
     const start = Math.floor((props.position / duration()) * (dataLength() / samplesPerPx));
-    const end = start + Math.min(visibleLength(), Math.floor(width));
+    const end = start + width;
     const peaksOpacity = clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1);
     const scale = props.scale;
     const strokeStyle = props.strokeStyle;
@@ -125,9 +131,7 @@ const Waveform = (
 
   const handleWheel = (event: WheelEvent & { currentTarget: Element }) => {
     event.preventDefault();
-
-    const zoomedLength = duration() / props.zoom;
-    const { width, height, left } = event.currentTarget.getBoundingClientRect();
+    const { width, height, left } = canvasDimensions();
 
     const deltaX = event.altKey ? event.deltaY : event.deltaX;
     const deltaY = event.altKey ? event.deltaX : event.deltaY;
@@ -145,10 +149,13 @@ const Waveform = (
 
       props.onPositionChange?.(newPosition);
     } else {
+      const maxZoom = (dataLength() / width) * 50 * window.devicePixelRatio;
+      const newZoom = clamp(props.zoom * (1 + deltaY / height), 1, maxZoom);
+      const zoomedLength = duration() / props.zoom;
+
       const pointerPositionPercentage = (event.clientX - left) / width;
       const pointerPosition = props.position + zoomedLength * pointerPositionPercentage;
 
-      const newZoom = clamp(props.zoom * (1 + deltaY / height), 1, dataLength() / width);
       const newZoomedLength = duration() / newZoom;
 
       const maxPosition = duration() - duration() / newZoom;
@@ -158,37 +165,68 @@ const Waveform = (
         maxPosition,
       );
 
-      props.onPositionChange?.(newPosition);
       props.onZoomChange?.(newZoom);
+      props.onPositionChange?.(newPosition);
     }
   };
 
   const handleScroll = (event: UIEvent & { currentTarget: Element }) => {
     event.preventDefault();
-    const { width } = scrollDivRef!.getBoundingClientRect();
-    const { scrollLeft, clientWidth } = event.currentTarget;
+    if (didUpdateScrollLeft) {
+      didUpdateScrollLeft = false;
+      return;
+    }
 
-    const scrollableWidth = width - clientWidth;
-    const scrollAmount = scrollableWidth > 0 ? scrollLeft / scrollableWidth : 0;
     const maxPosition = duration() - duration() / props.zoom;
+
+    const { width } = canvasDimensions();
+    const { scrollLeft, scrollWidth } = event.currentTarget;
+    const scrollAmount = scrollLeft / (scrollWidth - width);
 
     props.onPositionChange?.(maxPosition * scrollAmount);
   };
+
+  let didUpdateScrollLeft = false;
+
+  createEffect(() => {
+    const maxPosition = duration() - duration() / props.zoom;
+    const scrollAmount = maxPosition > 0 ? props.position / maxPosition : 0;
+
+    const { width } = canvasDimensions();
+
+    if (!scrollbarDivRef?.parentElement || !contentDivRef) return;
+
+    const contentDivWidth = clamp(props.zoom * width, width, 16777214);
+    const contentDivScrollLeft = scrollAmount * (contentDivWidth - width);
+
+    const scrollDivWidth = clamp(contentDivWidth, width, 16777214);
+    const scrollLeft = scrollAmount * (scrollDivWidth - width);
+
+    didUpdateScrollLeft = true;
+
+    scrollbarDivRef.parentElement.scrollTo(scrollLeft, 0);
+    scrollbarDivRef.style.width = `${scrollDivWidth}px`;
+
+    contentDivRef.style.marginLeft = `${-contentDivScrollLeft}px`;
+    contentDivRef.style.width = `${contentDivWidth}px`;
+  });
 
   createEffect(() => {
     cachedWaveformPeaks().warmup((progress) => setProgress(progress));
   });
 
+  const getContextValue = () => ({
+    duration: duration(),
+    position: props.position,
+    zoom: props.zoom,
+    updatePosition: props.onPositionChange,
+    dimensions: canvasDimensions(),
+  });
+
+  const [contextValue, setContextValue] = createStore<WaveformContext>(getContextValue());
+
   createEffect(() => {
-    const maxPosition = duration() - duration() / props.zoom;
-    const scrollAmount = props.position / maxPosition;
-
-    const { width } = canvasDimensions();
-
-    if (!scrollDivRef || !scrollDivRef.parentElement) return;
-
-    scrollDivRef.parentElement.scrollLeft = scrollAmount * (width * props.zoom - width);
-    scrollDivRef.style.width = `${width * props.zoom}px`;
+    setContextValue(getContextValue());
   });
 
   return (
@@ -230,28 +268,41 @@ const Waveform = (
       </Show>
 
       <div
+        class="Waveform-Scroller"
         style={{
           position: "absolute",
           left: 0,
-          top: 0,
+          bottom: 0,
           width: "100%",
           height: "100%",
           "overflow-x": "auto",
         }}
         onScroll={handleScroll}
       >
-        <div ref={scrollDivRef} style={{ height: "100%", position: "relative" }}>
-          <WaveformContextProvider
-            value={{
-              duration,
-              position: () => props.position,
-              zoom: () => props.zoom,
-              updatePosition: (position) => props.onPositionChange?.(position),
-              dimensions: canvasDimensions,
-            }}
-          >
-            {props.children}
-          </WaveformContextProvider>
+        <div
+          class="Waveform-ScrollbarDiv"
+          ref={scrollbarDivRef}
+          style={{ height: "100%", position: "relative" }}
+        />
+      </div>
+
+      <div
+        class="Waveform-ContentContainer"
+        style={{
+          position: "absolute",
+          left: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          "overflow-x": "hidden",
+        }}
+      >
+        <div
+          class="Waveform-Content"
+          ref={contentDivRef}
+          style={{ height: "100%", position: "relative" }}
+        >
+          <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
         </div>
       </div>
     </div>

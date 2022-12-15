@@ -17,7 +17,7 @@ const createCachedWaveformPeaks = (data: WaveformData) => {
   }) => {
     const peaks = [];
 
-    for (let x = start; x < end; x++) {
+    for (let x = start; x <= end; x++) {
       peaks.push(getPeakAtCached(samplesPerPx, x));
       if (x % 10000 === 0 && onProgress) {
         onProgress?.(x / end);
@@ -109,8 +109,15 @@ export const getPeakAt = (
   let min = 0;
 
   if (samplesPerPx < 1) {
-    const index = Math.round(x * samplesPerPx);
-    const value = data[index];
+    const indexCeil = Math.ceil(x * samplesPerPx);
+    const indexFloor = Math.floor(x * samplesPerPx);
+
+    const ratio = x % 1;
+    const valueCeil = data[indexCeil];
+    const valueFloor = data[indexFloor];
+
+    const value = valueCeil * ratio + valueFloor * (1 - ratio);
+
     return [value < 0 ? value : 0, value > 0 ? value : 0];
   }
 

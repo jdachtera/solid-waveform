@@ -1,4 +1,4 @@
-import { createEffect, createMemo, JSX, mergeProps, splitProps } from "solid-js";
+import { createEffect, createMemo, JSX, mergeProps, splitProps, untrack } from "solid-js";
 import { useWaveformContext } from "./context";
 import { clamp } from "./helpers";
 
@@ -15,19 +15,23 @@ const PlayHead = (
     "sync",
     "onPlayHeadPositionChange",
   ]);
-  const { duration, updatePosition, zoom, dimensions } = useWaveformContext();
+  const context = useWaveformContext();
 
   createEffect(() => {
     if (!props.sync) return;
 
-    const maxPosition = duration() - duration() / zoom();
-    const newPosition = clamp(props.playHeadPosition - duration() / zoom() / 2, 0, maxPosition);
+    const maxPosition = context.duration - context.duration / context.zoom;
+    const newPosition = clamp(
+      props.playHeadPosition - context.duration / context.zoom / 2,
+      0,
+      maxPosition,
+    );
 
-    updatePosition(newPosition);
+    context.updatePosition?.(newPosition);
   });
 
-  const range = createMemo(() => dimensions().width - 2);
-  const leftPosition = createMemo(() => (props.playHeadPosition / duration()) * range());
+  const range = createMemo(() => context.dimensions.width * context.zoom);
+  const leftPosition = createMemo(() => (props.playHeadPosition / context.duration) * range());
 
   return (
     <div
@@ -51,9 +55,9 @@ const PlayHead = (
 
           const percentage = (leftPosition() + movementX) / range()!;
 
-          props.onPlayHeadPositionChange?.(percentage * duration());
+          props.onPlayHeadPositionChange?.(percentage * context.duration);
         };
-        const handleMouseUp = (event: MouseEvent) => {
+        const handleMouseUp = () => {
           window.removeEventListener("mousemove", handleMouseMove);
           window.removeEventListener("mouseup", handleMouseUp);
         };

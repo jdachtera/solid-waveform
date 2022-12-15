@@ -42,7 +42,7 @@ const Demo: Component = () => {
 
   const [position, setPosition] = createSignal(0);
   const [playHeadPosition, setPlayHeadPosition] = createSignal(0);
-  const [syncPlayHead, setSyncPlayHead] = createSignal(true);
+  const [syncPlayHead, setSyncPlayHead] = createSignal(false);
   const [isPlaying, setIsPlaying] = createSignal(false);
 
   const [zoom, setZoom] = createSignal(1);
@@ -146,7 +146,10 @@ const Demo: Component = () => {
 
       <div>
         <label>Position:</label>
-        <input value={position().toFixed(3)} />
+        <input
+          value={position().toFixed(3)}
+          onInput={(event) => setPosition(event.currentTarget.valueAsNumber)}
+        />
       </div>
       <div>
         <label>Playhead Position: {playHeadPosition().toFixed(3)}</label>
@@ -173,12 +176,22 @@ const Demo: Component = () => {
 
       <div>
         <label>Zoom:</label>
-        <input value={zoom().toFixed(3)} />
+        <input
+          type="number"
+          value={zoom().toFixed(3)}
+          onInput={(event) => {
+            if (isNaN(event.currentTarget.valueAsNumber)) return;
+            setZoom(Math.max(0, event.currentTarget.valueAsNumber));
+          }}
+        />
       </div>
 
       <div>
         <label>Scale:</label>
-        <input value={scale().toFixed(3)} />
+        <input
+          value={scale().toFixed(3)}
+          onInput={(event) => setScale(event.currentTarget.valueAsNumber)}
+        />
       </div>
 
       <div>

@@ -13,7 +13,7 @@ const Regions = (props: {
   let containerRef: HTMLDivElement | undefined;
 
   const [newRegion, setNewRegion] = createSignal<Region>();
-  const { duration } = useWaveformContext();
+  const context = useWaveformContext();
 
   const getPosition = (clientX: number) => {
     const parent = containerRef?.parentElement;
@@ -22,7 +22,7 @@ const Regions = (props: {
     const width = containerRef?.clientWidth ?? 0;
     const rect = parent?.getBoundingClientRect();
 
-    const position = ((clientX - rect.left + parent.scrollLeft) / width) * duration();
+    const position = ((clientX - rect.left + parent.scrollLeft) / width) * context.duration;
 
     return position;
   };
@@ -74,7 +74,7 @@ const Regions = (props: {
 
   return (
     <div
-      class="Regions"
+      class="Waveform-Regions"
       style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
       ref={containerRef}
       onMouseDown={handleMouseDown}
@@ -83,7 +83,7 @@ const Regions = (props: {
         {(region) => (
           <Region
             region={region()}
-            duration={duration()}
+            duration={context.duration}
             getPosition={getPosition}
             onUpdateRegion={props.onUpdateRegion}
             onClickRegion={props.onClickRegion}

@@ -89,6 +89,7 @@ export const Region = (props: {
 
   return (
     <div
+      class="Waveform-Region"
       style={{
         display: "flex",
         "justify-content": "space-between",
