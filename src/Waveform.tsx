@@ -336,7 +336,9 @@ const Waveform = (
           class="Waveform-Content"
           ref={contentDivRef}
           style={{ height: "100%", position: "relative" }}
-        ></div>
+        >
+          <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
+        </div>
       </div>
     </div>
   );
