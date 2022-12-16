@@ -137,7 +137,12 @@ const Demo: Component = () => {
         />
       </Waveform>
 
-      <Oscilloscope style={{ height: "300px" }} analyzerNode={analyser} scale={2}></Oscilloscope>
+      <Oscilloscope
+        style={{ height: "300px" }}
+        analyzerNode={analyser}
+        scale={2}
+        mode={mode()}
+      ></Oscilloscope>
 
       <h2>Info:</h2>
       <button onClick={togglePlay}>{isPlaying() ? "Pause" : "Play"}</button>

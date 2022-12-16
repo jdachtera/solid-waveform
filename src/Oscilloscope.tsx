@@ -11,7 +11,7 @@ const Oscilloscope = (
     strokeStyle?: string | CanvasGradient | CanvasPattern;
     lineWidth?: number;
     slowNessFactor?: number;
-    mode: WaveformMode;
+    mode?: WaveformMode;
   } & JSX.IntrinsicElements["div"],
 ) => {
   const propsWithDefaults = mergeProps(allProps, {
