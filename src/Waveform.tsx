@@ -306,7 +306,8 @@ const Waveform = (
           left: 0,
           bottom: 0,
           width: "100%",
-          height: "100%",
+          height: "16px",
+          "z-index": 2,
           "overflow-x": "auto",
         }}
         onScroll={handleScroll}
@@ -326,16 +327,16 @@ const Waveform = (
           bottom: 0,
           width: "100%",
           height: "100%",
+          "z-index": 1,
           "overflow-x": "hidden",
+          "touch-action": "none",
         }}
       >
         <div
           class="Waveform-Content"
           ref={contentDivRef}
           style={{ height: "100%", position: "relative" }}
-        >
-          <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
-        </div>
+        ></div>
       </div>
     </div>
   );

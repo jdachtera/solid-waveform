@@ -70,10 +70,11 @@ const Oscilloscope = (
 
     for (let x = 0; x < dimensions.width; x++) {
       const peak = getPeakAt(data, samplesPerPx, x, props.mode);
+      const previousPeak = previousPeaks?.[x] ?? [0, 0];
 
       peaks.push([
-        peak[0] * percentage + (previousPeaks?.[x]?.[0] ?? 0) * (1 - percentage),
-        peak[1] * percentage + (previousPeaks?.[x]?.[1] ?? 0) * (1 - percentage),
+        peak[0] * percentage + previousPeak[0] * (1 - percentage),
+        peak[1] * percentage + previousPeak[1] * (1 - percentage),
       ]);
     }
 
