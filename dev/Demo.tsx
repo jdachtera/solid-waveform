@@ -54,6 +54,7 @@ const Demo: Component = () => {
 
   const handleEnded = () => {
     setIsPlaying(false);
+    setPlayHeadPosition(audioCtx.currentTime - audioSourcePlayStart);
   };
 
   const play = (start: number = 0, duration?: number) => {
