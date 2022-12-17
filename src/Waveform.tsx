@@ -43,7 +43,6 @@ const Waveform = (
   ]);
 
   let scrollbarDivRef: HTMLDivElement | undefined;
-  let contentDivRef: HTMLDivElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
 
@@ -226,21 +225,15 @@ const Waveform = (
 
     const { width } = canvasDimensions();
 
-    if (!scrollbarDivRef?.parentElement || !contentDivRef) return;
+    if (!scrollbarDivRef?.parentElement) return;
 
-    const contentDivWidth = clamp(props.zoom * width, width, 16777214);
-    const contentDivScrollLeft = scrollAmount * (contentDivWidth - width);
-
-    const scrollDivWidth = clamp(contentDivWidth, width, 16777214);
+    const scrollDivWidth = clamp(props.zoom * width, width, 10000);
     const scrollLeft = scrollAmount * (scrollDivWidth - width);
 
     didUpdateScrollLeft = true;
 
     scrollbarDivRef.parentElement.scrollTo(scrollLeft, 0);
     scrollbarDivRef.style.width = `${scrollDivWidth}px`;
-
-    contentDivRef.style.marginLeft = `${-contentDivScrollLeft}px`;
-    contentDivRef.style.width = `${contentDivWidth}px`;
   });
 
   createEffect(() => {
@@ -332,11 +325,7 @@ const Waveform = (
           "touch-action": "none",
         }}
       >
-        <div
-          class="Waveform-Content"
-          ref={contentDivRef}
-          style={{ height: "100%", position: "relative" }}
-        >
+        <div class="Waveform-Content" style={{ height: "100%", position: "relative" }}>
           <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
         </div>
       </div>

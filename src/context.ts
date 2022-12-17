@@ -5,7 +5,7 @@ export type WaveformContext = {
   position: number;
   zoom: number;
   updatePosition?: (position: number) => void;
-  dimensions: Pick<DOMRect, "width" | "height">;
+  dimensions: Pick<DOMRect, "width" | "height" | "left" | "top">;
 };
 
 const waveformContext = createContext<WaveformContext>(
@@ -14,7 +14,7 @@ const waveformContext = createContext<WaveformContext>(
     duration: 0,
     position: 0,
     updatePosition: () => {},
-    dimensions: { width: 0, height: 0 },
+    dimensions: { width: 0, height: 0, left: 0, top: 0 },
   },
   { name: "Waveform" },
 );

@@ -1,7 +1,8 @@
-import { createSignal, createUniqueId, Index } from "solid-js";
+import { createMemo, createSignal, createUniqueId, Index } from "solid-js";
 import { useWaveformContext } from "./context";
 import { randomColor } from "./helpers";
 import { Region } from "./Region";
+import useScaler from "./useScaler";
 
 const Regions = (props: {
   regions?: Region[];
@@ -10,32 +11,19 @@ const Regions = (props: {
   onClickRegion?: (region: Region, event: MouseEvent) => void;
   onDblClickRegion?: (region: Region, event: MouseEvent) => void;
 }) => {
-  let containerRef: HTMLDivElement | undefined;
-
   const [newRegion, setNewRegion] = createSignal<Region>();
   const context = useWaveformContext();
-
-  const getPosition = (clientX: number) => {
-    const parent = containerRef?.parentElement;
-    if (!parent) return 0;
-
-    const width = containerRef?.clientWidth ?? 0;
-    const rect = parent?.getBoundingClientRect();
-
-    const position = ((clientX - rect.left + parent.scrollLeft) / width) * context.duration;
-
-    return position;
-  };
+  const scaler = useScaler();
 
   const handleMouseDown = (event: MouseEvent) => {
     if (props.regions === undefined) return;
 
     event.stopPropagation();
     event.preventDefault();
-    const mouseDownPosition = getPosition(event.clientX);
+    const mouseDownPosition = scaler.getPosition(event.clientX);
 
     const onMouseMove = (event: MouseEvent) => {
-      const mouseMovePosition = getPosition(event.clientX);
+      const mouseMovePosition = scaler.getPosition(event.clientX);
 
       const createdRegion = newRegion();
       if (!createdRegion) {
@@ -76,7 +64,6 @@ const Regions = (props: {
     <div
       class="Waveform-Regions"
       style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
-      ref={containerRef}
       onMouseDown={handleMouseDown}
     >
       <Index each={props.regions}>
@@ -84,7 +71,6 @@ const Regions = (props: {
           <Region
             region={region()}
             duration={context.duration}
-            getPosition={getPosition}
             onUpdateRegion={props.onUpdateRegion}
             onClickRegion={props.onClickRegion}
             onDblClickRegion={props.onDblClickRegion}

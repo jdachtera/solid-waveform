@@ -1,6 +1,7 @@
 import { createEffect, createMemo, JSX, mergeProps, splitProps, untrack } from "solid-js";
 import { useWaveformContext } from "./context";
 import { clamp } from "./helpers";
+import useScaler from "./useScaler";
 
 const PlayHead = (
   allProps: {
@@ -16,6 +17,7 @@ const PlayHead = (
     "onPlayHeadPositionChange",
   ]);
   const context = useWaveformContext();
+  const scaler = useScaler();
 
   createEffect(() => {
     if (!props.sync) return;
@@ -30,8 +32,7 @@ const PlayHead = (
     context.updatePosition?.(newPosition);
   });
 
-  const range = createMemo(() => context.dimensions.width * context.zoom);
-  const leftPosition = createMemo(() => (props.playHeadPosition / context.duration) * range());
+  const leftPosition = createMemo(() => scaler.getCoordinates(props.playHeadPosition));
 
   return (
     <div
@@ -53,9 +54,8 @@ const PlayHead = (
           const { parentElement } = event.currentTarget;
           if (!parentElement) return;
 
-          const percentage = (leftPosition() + movementX) / range()!;
-
-          props.onPlayHeadPositionChange?.(percentage * context.duration);
+          const newPosition = scaler.getPosition(leftPosition() + movementX);
+          props.onPlayHeadPositionChange?.(newPosition);
         };
         const handleMouseUp = () => {
           window.removeEventListener("mousemove", handleMouseMove);

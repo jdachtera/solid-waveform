@@ -1,5 +1,6 @@
-import { createEffect, onCleanup, For } from "solid-js";
+import { createEffect, onCleanup, For, createMemo, Show } from "solid-js";
 import { createStore } from "solid-js/store";
+import useScaler from "./useScaler";
 
 export type Region = { id: string; color: string; start: number; end: number };
 
@@ -12,8 +13,13 @@ export const Region = (props: {
   onUpdateRegion?: (region: Region) => void;
   onClickRegion?: (region: Region, event: MouseEvent) => void;
   onDblClickRegion?: (region: Region, event: MouseEvent) => void;
-  getPosition: (clientX: number) => number;
 }) => {
+  const scaler = useScaler();
+
+  const virtualDimensions = createMemo(() =>
+    scaler.getVirtualDimensions(props.region.start, props.region.end - props.region.start),
+  );
+
   const [state, setState] = createStore<{
     dragHandle: RegionDragHandle;
     initialRegion?: Region;
@@ -22,7 +28,7 @@ export const Region = (props: {
 
   const handleMouseMove = (event: MouseEvent) => {
     event.preventDefault();
-    const position = props.getPosition(event.clientX);
+    const position = scaler.getPosition(event.clientX);
 
     if (!state.initialRegion) return;
 
@@ -63,7 +69,7 @@ export const Region = (props: {
     setState({
       dragHandle,
       initialRegion: props.region,
-      offset: dragHandle === "MIDDLE" ? props.getPosition(event.clientX) - props.region.start : 0,
+      offset: dragHandle === "MIDDLE" ? scaler.getPosition(event.clientX) - props.region.start : 0,
     });
   };
 
@@ -88,26 +94,28 @@ export const Region = (props: {
   onCleanup(() => cleanup());
 
   return (
-    <div
-      class="Waveform-Region"
-      style={{
-        display: "flex",
-        "justify-content": "space-between",
-        position: "absolute",
-        top: 0,
-        height: "100%",
-        opacity: 0.7,
-        width: `${((props.region.end - props.region.start) / props.duration) * 100}%`,
-        left: `${(props.region.start / props.duration) * 100}%`,
-        "background-color": props.region.color,
-      }}
-    >
-      <For each={regionDragHandles}>
-        {(dragHandle) => (
-          <RegionDragHandle handleName={dragHandle} onMouseDown={onDragHandleMouseDown} />
-        )}
-      </For>
-    </div>
+    <Show when={virtualDimensions().width > 0}>
+      <div
+        class="Waveform-Region"
+        style={{
+          display: "flex",
+          "justify-content": "space-between",
+          position: "absolute",
+          top: 0,
+          height: "100%",
+          opacity: 0.7,
+          width: `${virtualDimensions().width}px`,
+          left: `${virtualDimensions().left}px`,
+          "background-color": props.region.color,
+        }}
+      >
+        <For each={regionDragHandles}>
+          {(dragHandle) => (
+            <RegionDragHandle handleName={dragHandle} onMouseDown={onDragHandleMouseDown} />
+          )}
+        </For>
+      </div>
+    </Show>
   );
 };
 
