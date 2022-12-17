@@ -2,7 +2,8 @@ import { createMemo, createSignal, createUniqueId, Index } from "solid-js";
 import { useWaveformContext } from "./context";
 import { randomColor } from "./helpers";
 import { Region } from "./Region";
-import useScaler from "./useScaler";
+import useViewPortScaler from "./useViewPortScaler";
+import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 const Regions = (props: {
   regions?: Region[];
@@ -13,17 +14,17 @@ const Regions = (props: {
 }) => {
   const [newRegion, setNewRegion] = createSignal<Region>();
   const context = useWaveformContext();
-  const scaler = useScaler();
+  const viewPort = useWaveformViewPortScaler();
 
   const handleMouseDown = (event: MouseEvent) => {
     if (props.regions === undefined) return;
 
     event.stopPropagation();
     event.preventDefault();
-    const mouseDownPosition = scaler.getPosition(event.clientX);
+    const mouseDownPosition = viewPort.getPosition(event.clientX);
 
     const onMouseMove = (event: MouseEvent) => {
-      const mouseMovePosition = scaler.getPosition(event.clientX);
+      const mouseMovePosition = viewPort.getPosition(event.clientX);
 
       const createdRegion = newRegion();
       if (!createdRegion) {

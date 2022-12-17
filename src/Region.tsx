@@ -1,6 +1,8 @@
 import { createEffect, onCleanup, For, createMemo, Show } from "solid-js";
 import { createStore } from "solid-js/store";
-import useScaler from "./useScaler";
+import { useWaveformContext } from "./context";
+import useViewPortScaler from "./useViewPortScaler";
+import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 export type Region = { id: string; color: string; start: number; end: number };
 
@@ -14,10 +16,10 @@ export const Region = (props: {
   onClickRegion?: (region: Region, event: MouseEvent) => void;
   onDblClickRegion?: (region: Region, event: MouseEvent) => void;
 }) => {
-  const scaler = useScaler();
+  const viewPort = useWaveformViewPortScaler();
 
   const virtualDimensions = createMemo(() =>
-    scaler.getVirtualDimensions(props.region.start, props.region.end - props.region.start),
+    viewPort.getVirtualDimensions(props.region.start, props.region.end - props.region.start),
   );
 
   const [state, setState] = createStore<{
@@ -28,7 +30,7 @@ export const Region = (props: {
 
   const handleMouseMove = (event: MouseEvent) => {
     event.preventDefault();
-    const position = scaler.getPosition(event.clientX);
+    const position = viewPort.getPosition(event.clientX);
 
     if (!state.initialRegion) return;
 
@@ -69,7 +71,8 @@ export const Region = (props: {
     setState({
       dragHandle,
       initialRegion: props.region,
-      offset: dragHandle === "MIDDLE" ? scaler.getPosition(event.clientX) - props.region.start : 0,
+      offset:
+        dragHandle === "MIDDLE" ? viewPort.getPosition(event.clientX) - props.region.start : 0,
     });
   };
 
@@ -94,7 +97,7 @@ export const Region = (props: {
   onCleanup(() => cleanup());
 
   return (
-    <Show when={virtualDimensions().width > 0}>
+    <Show when={virtualDimensions().size > 0}>
       <div
         class="Waveform-Region"
         style={{
@@ -104,8 +107,8 @@ export const Region = (props: {
           top: 0,
           height: "100%",
           opacity: 0.7,
-          width: `${virtualDimensions().width}px`,
-          left: `${virtualDimensions().left}px`,
+          width: `${virtualDimensions().size}px`,
+          left: `${virtualDimensions().offset}px`,
           "background-color": props.region.color,
         }}
       >

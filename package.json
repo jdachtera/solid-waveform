@@ -43,10 +43,7 @@
     "update-deps": "taze -w && yarn",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@types/hammerjs": "^2.0.41",
-    "hammerjs": "^2.0.8"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "solid-js": ">=1.0.0"
   },

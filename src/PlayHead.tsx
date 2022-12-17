@@ -1,7 +1,8 @@
 import { createEffect, createMemo, JSX, mergeProps, splitProps, untrack } from "solid-js";
 import { useWaveformContext } from "./context";
 import { clamp } from "./helpers";
-import useScaler from "./useScaler";
+import useViewPortScaler from "./useViewPortScaler";
+import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 const PlayHead = (
   allProps: {
@@ -17,8 +18,7 @@ const PlayHead = (
     "onPlayHeadPositionChange",
   ]);
   const context = useWaveformContext();
-  const scaler = useScaler();
-
+  const viewPort = useWaveformViewPortScaler();
   createEffect(() => {
     if (!props.sync) return;
 
@@ -32,7 +32,7 @@ const PlayHead = (
     context.updatePosition?.(newPosition);
   });
 
-  const leftPosition = createMemo(() => scaler.getCoordinates(props.playHeadPosition));
+  const leftPosition = createMemo(() => viewPort.getCoordinates(props.playHeadPosition));
 
   return (
     <div
@@ -54,7 +54,7 @@ const PlayHead = (
           const { parentElement } = event.currentTarget;
           if (!parentElement) return;
 
-          const newPosition = scaler.getPosition(leftPosition() + movementX);
+          const newPosition = viewPort.getPosition(leftPosition() + movementX);
           props.onPlayHeadPositionChange?.(newPosition);
         };
         const handleMouseUp = () => {
