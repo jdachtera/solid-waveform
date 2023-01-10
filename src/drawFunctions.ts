@@ -72,7 +72,7 @@ export const drawWaveformWithPeaks = async ({
   };
   sampleDotsStyle?: {
     opacity?: number;
-    strokeStyle?: string | CanvasGradient | CanvasPattern;
+    fillStyle?: string | CanvasGradient | CanvasPattern;
     radius?: number;
   };
   width: number;
@@ -113,7 +113,7 @@ export const drawWaveformWithPeaks = async ({
     drawPeaks(context, scaledPeaks);
   }
 
-  context.strokeStyle = sampleDotsStyle?.strokeStyle ?? "rgb(0,0,0)";
+  context.fillStyle = sampleDotsStyle?.fillStyle ?? "rgb(0,0,0)";
   context.globalAlpha = sampleDotsStyle?.opacity ?? 1;
   if (context.globalAlpha) {
     drawSampleDots(context, scaledPeaks, sampleDotsStyle?.radius ?? 3);

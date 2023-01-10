@@ -93,7 +93,7 @@ const Oscilloscope = (
       },
       sampleDotsStyle: {
         opacity: 0,
-        strokeStyle: props.strokeStyle,
+        fillStyle: props.strokeStyle,
       },
 
       logScale: true,

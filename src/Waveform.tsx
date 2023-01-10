@@ -152,7 +152,7 @@ const Waveform = (
         },
         sampleDotsStyle: {
           opacity: sampleDotsOpacity,
-          strokeStyle,
+          fillStyle: strokeStyle,
           radius: props.lineWidth * devicePixelRatio * 2,
         },
         logScale,
