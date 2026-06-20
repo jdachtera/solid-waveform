@@ -21,7 +21,13 @@ const createCachedWaveformSource = (data: WaveformData) => {
     end?: number;
     mode: WaveformMode;
   }) => {
-    const peaks = [];
+    const peaks: number[][] = [];
+
+    // A non-finite or non-positive samplesPerPx (e.g. width 0 -> Infinity) makes
+    // the default `end` Infinity/0 and recurses getValuesAtCached forever; bail.
+    if (!Number.isFinite(samplesPerPx) || samplesPerPx <= 0 || !Number.isFinite(end)) {
+      return peaks;
+    }
 
     for (let x = start; x <= end; x++) {
       peaks.push(getValuesAtCached(samplesPerPx, x, mode));
@@ -35,6 +41,10 @@ const createCachedWaveformSource = (data: WaveformData) => {
   };
 
   const getValuesAtCached = (samplesPerPx: number, x: number, mode: WaveformMode) => {
+    // Defensive: a non-finite samplesPerPx would recurse forever below.
+    if (!Number.isFinite(samplesPerPx)) {
+      return [0, 0];
+    }
     if (samplesPerPx === 1) {
       return [data[x], data[x]];
     }

@@ -105,8 +105,13 @@ const Waveform = (
     if (!dataLength()) return;
     if (!context) return;
     const { height, width } = canvasDimensions();
+    // Canvas not measured yet (ResizeObserver hasn't fired): a width of 0 makes
+    // samplesPerPx Infinity, which overflows the peak-cache recursion. Wait
+    // until the canvas has a real size before drawing.
+    if (!width || !height) return;
 
     const samplesPerPx = visibleLength() / width;
+    if (!Number.isFinite(samplesPerPx) || samplesPerPx <= 0) return;
     const start = Math.floor((props.position / duration()) * (dataLength() / samplesPerPx));
     const end = start + width;
     const peaksOpacity = clamp(Math.log(samplesPerPx / 35) - 0.5, 0, 1);
