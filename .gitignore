@@ -6,4 +6,3 @@ gitignore
 
 # VSC Settings
 .vscode/settings.json
-pnpm-lock.yaml

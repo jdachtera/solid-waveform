@@ -15,6 +15,7 @@
   },
   "private": false,
   "type": "module",
+  "packageManager": "pnpm@10.12.4",
   "files": [
     "dist"
   ],
@@ -37,10 +38,10 @@
     "dev": "vite serve dev",
     "build-dev": "vite build dev",
     "test": "echo \"test not setup\"",
-    "build": "rollup -c && yarn build-dev",
-    "prepublishOnly": "yarn build",
+    "build": "rollup -c && pnpm build-dev",
+    "prepublishOnly": "pnpm build",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
-    "update-deps": "taze -w && yarn",
+    "update-deps": "taze -w && pnpm install",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {},
