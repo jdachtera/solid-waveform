@@ -40,6 +40,7 @@
     "test": "echo \"test not setup\"",
     "build": "rollup -c && pnpm build-dev",
     "prepublishOnly": "pnpm build",
+    "prepare": "rollup -c",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
     "update-deps": "taze -w && pnpm install",
     "typecheck": "tsc --noEmit"
