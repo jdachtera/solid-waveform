@@ -42,7 +42,8 @@
     "prepublishOnly": "pnpm build",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
     "update-deps": "taze -w && pnpm install",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "rollup -c"
   },
   "dependencies": {},
   "peerDependencies": {
