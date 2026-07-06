@@ -86,6 +86,13 @@ const Waveform = (
     observer.unobserve(canvasRef!);
   });
 
+  // The last successful draw's arguments, so a resize can REPAINT immediately.
+  // Setting a canvas's width/height clears its backing store, and our real draw is
+  // async (requestAnimationFrame + await getValues) — that gap showed a blank
+  // canvas on every resize (the flicker). Repainting the cached peaks synchronously
+  // right after resizing bridges the gap until the fresh async draw lands.
+  let lastDrawArgs: Parameters<typeof drawWaveformWithPeaks>[0] | undefined;
+
   createEffect(() => {
     if (!context) return;
 
@@ -93,10 +100,15 @@ const Waveform = (
 
     const dpi = window.devicePixelRatio;
 
+    // Setting width/height resets the backing store AND the 2d transform.
     canvasRef?.setAttribute("width", (width * dpi).toString());
     canvasRef?.setAttribute("height", (height * dpi).toString());
 
     context.scale(dpi, dpi);
+
+    // No blank frame: redraw the last peaks at the new size right away.
+    if (lastDrawArgs && width && height)
+      drawWaveformWithPeaks({ ...lastDrawArgs, context, width, height });
   });
 
   let animationFrame: number;
@@ -137,7 +149,7 @@ const Waveform = (
         mode,
       });
 
-      drawWaveformWithPeaks({
+      const drawArgs = {
         context,
 
         peaks,
@@ -161,7 +173,10 @@ const Waveform = (
           radius: props.lineWidth * devicePixelRatio * 2,
         },
         logScale,
-      });
+      };
+
+      drawWaveformWithPeaks(drawArgs);
+      lastDrawArgs = drawArgs; // cached for the instant repaint-on-resize above
     });
   });
 
