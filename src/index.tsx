@@ -5,6 +5,8 @@ import Oscilloscope from "./Oscilloscope";
 import Regions from "./Regions";
 import PlayHead from "./PlayHead";
 
+export type { WaveformData, WaveformMode } from "./createCachedWaveformPeaks";
+
 export {
   Waveform,
   Oscilloscope,

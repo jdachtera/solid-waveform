@@ -1,7 +1,7 @@
 import { JSX, mergeProps, Show } from "solid-js";
 import { onCleanup, onMount, createEffect, createMemo, createSignal, splitProps } from "solid-js";
 
-import createCachedWaveformSource, { WaveformMode } from "./createCachedWaveformPeaks";
+import createCachedWaveformSource, { WaveformMode, WaveformData } from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
@@ -9,7 +9,13 @@ import { createStore } from "solid-js/store";
 
 const Waveform = (
   allProps: {
+    // Provide EITHER a decoded `buffer` (the waveform reads channel 0), OR a
+    // precomputed `data` array of mono samples (full or decimated) plus its
+    // `duration` in seconds. `data` lets a host keep a tiny per-source envelope
+    // instead of the full PCM — the peak pipeline works from either.
     buffer?: AudioBuffer;
+    data?: WaveformData;
+    duration?: number;
     position: number;
     zoom: number;
     scale: number;
@@ -30,6 +36,8 @@ const Waveform = (
   const [props, divProps] = splitProps(propsWithDefauls, [
     "strokeStyle",
     "buffer",
+    "data",
+    "duration",
     "position",
     "zoom",
     "scale",
@@ -46,8 +54,11 @@ const Waveform = (
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
 
-  const rawData = createMemo(() => props.buffer?.getChannelData(0));
-  const duration = createMemo(() => props.buffer?.duration ?? 0);
+  // `data` (precomputed samples) wins over `buffer`; duration comes from the
+  // explicit prop, else the buffer. dataLength is whatever we're drawing from, so
+  // the samples-per-pixel math scales correctly for a decimated envelope too.
+  const rawData = createMemo(() => props.data ?? props.buffer?.getChannelData(0));
+  const duration = createMemo(() => props.duration ?? props.buffer?.duration ?? 0);
   const endTime = createMemo(() => props.position + duration() / props.zoom);
   const dataLength = createMemo(() => rawData()?.length ?? 0);
   const visibleLength = createMemo(() =>

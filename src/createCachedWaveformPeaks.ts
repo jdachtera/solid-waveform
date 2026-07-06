@@ -1,4 +1,4 @@
-type WaveformData = Float32Array | number[];
+export type WaveformData = Float32Array | number[];
 export type WaveformMode = "peak" | "rms";
 
 const createCachedWaveformSource = (data: WaveformData) => {
