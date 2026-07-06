@@ -7,15 +7,21 @@ import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
 import { createStore } from "solid-js/store";
 
-// The waveform's audio source — EITHER a decoded `buffer` (reads channel 0) OR a
-// precomputed `data` array of mono samples (full or decimated) plus its `duration`
-// in seconds. Never both: `data` lets a host keep a tiny per-source envelope
-// instead of the full PCM; the peak pipeline works from either.
+// The waveform's audio source. Provide EITHER a decoded `buffer` (reads channel 0)
+// OR a precomputed `data` array of mono samples (full or decimated) plus its
+// `duration` in seconds — `data` lets a host keep a tiny per-source envelope
+// instead of the full PCM. The props are loose optionals (not a discriminated
+// union) because TS's JSX attribute checking doesn't distribute union component
+// props — it validates against one member and rejects the other's keys. This type
+// documents the real "one of" contract and is available for callers to enforce.
 export type WaveformSource =
   | { buffer: AudioBuffer; data?: never; duration?: never }
   | { data: WaveformData; duration: number; buffer?: never };
 
-type WaveformOwnProps = {
+export type WaveformProps = {
+  buffer?: AudioBuffer;
+  data?: WaveformData;
+  duration?: number;
   position: number;
   zoom: number;
   scale: number;
@@ -27,9 +33,7 @@ type WaveformOwnProps = {
   onPositionChange?: (position: number) => void;
   onZoomChange?: (position: number) => void;
   onScaleChange?: (scale: number) => void;
-};
-
-export type WaveformProps = WaveformSource & WaveformOwnProps & JSX.IntrinsicElements["div"];
+} & JSX.IntrinsicElements["div"];
 
 const Waveform = (allProps: WaveformProps) => {
   const propsWithDefauls = mergeProps(
