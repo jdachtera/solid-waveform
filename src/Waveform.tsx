@@ -7,28 +7,31 @@ import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
 import { createStore } from "solid-js/store";
 
-const Waveform = (
-  allProps: {
-    // Provide EITHER a decoded `buffer` (the waveform reads channel 0), OR a
-    // precomputed `data` array of mono samples (full or decimated) plus its
-    // `duration` in seconds. `data` lets a host keep a tiny per-source envelope
-    // instead of the full PCM — the peak pipeline works from either.
-    buffer?: AudioBuffer;
-    data?: WaveformData;
-    duration?: number;
-    position: number;
-    zoom: number;
-    scale: number;
-    strokeStyle?: string | CanvasGradient | CanvasPattern;
-    lineWidth?: number;
-    logScale?: boolean;
-    mode?: WaveformMode;
+// The waveform's audio source — EITHER a decoded `buffer` (reads channel 0) OR a
+// precomputed `data` array of mono samples (full or decimated) plus its `duration`
+// in seconds. Never both: `data` lets a host keep a tiny per-source envelope
+// instead of the full PCM; the peak pipeline works from either.
+export type WaveformSource =
+  | { buffer: AudioBuffer; data?: never; duration?: never }
+  | { data: WaveformData; duration: number; buffer?: never };
 
-    onPositionChange?: (position: number) => void;
-    onZoomChange?: (position: number) => void;
-    onScaleChange?: (scale: number) => void;
-  } & JSX.IntrinsicElements["div"],
-) => {
+type WaveformOwnProps = {
+  position: number;
+  zoom: number;
+  scale: number;
+  strokeStyle?: string | CanvasGradient | CanvasPattern;
+  lineWidth?: number;
+  logScale?: boolean;
+  mode?: WaveformMode;
+
+  onPositionChange?: (position: number) => void;
+  onZoomChange?: (position: number) => void;
+  onScaleChange?: (scale: number) => void;
+};
+
+export type WaveformProps = WaveformSource & WaveformOwnProps & JSX.IntrinsicElements["div"];
+
+const Waveform = (allProps: WaveformProps) => {
   const propsWithDefauls = mergeProps(
     { logScale: false, mode: "peak" as WaveformMode, lineWidth: 1 },
     allProps,
