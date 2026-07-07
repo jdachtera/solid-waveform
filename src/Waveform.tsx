@@ -90,7 +90,19 @@ const Waveform = (allProps: WaveformProps) => {
     setCanvasDimensions({ width, height, left, top });
   };
 
-  const observer = new ResizeObserver(updateDimensions);
+  // rAF-coalesce the observer: a corner-drag fires it several times per frame, and
+  // updateDimensions does a forced synchronous layout (getBoundingClientRect). Collapse
+  // multiple ticks into ONE rect read per frame. (left/top are kept exact — they feed
+  // the viewport scaler's pointer→time math, so we can't take them from contentRect.)
+  let roScheduled = false;
+  const observer = new ResizeObserver(() => {
+    if (roScheduled) return;
+    roScheduled = true;
+    requestAnimationFrame(() => {
+      roScheduled = false;
+      updateDimensions();
+    });
+  });
 
   onMount(() => {
     context = canvasRef?.getContext("2d") ?? undefined;
@@ -112,21 +124,26 @@ const Waveform = (allProps: WaveformProps) => {
   let lastDrawArgs: Parameters<typeof drawWaveformWithPeaks>[0] | undefined;
 
   createEffect(() => {
-    if (!context) return;
+    if (!context || !canvasRef) return;
 
     const { height, width } = canvasDimensions();
-
     const dpi = window.devicePixelRatio;
+    const newW = Math.round(width * dpi);
+    const newH = Math.round(height * dpi);
 
-    // Setting width/height resets the backing store AND the 2d transform.
-    canvasRef?.setAttribute("width", (width * dpi).toString());
-    canvasRef?.setAttribute("height", (height * dpi).toString());
-
-    context.scale(dpi, dpi);
-
-    // No blank frame: redraw the last peaks at the new size right away.
-    if (lastDrawArgs && width && height)
-      drawWaveformWithPeaks({ ...lastDrawArgs, context, width, height });
+    // Setting width/height reallocates + CLEARS the backing store (expensive, 4× the
+    // pixels on Retina). canvasDimensions() also emits for left/top-only changes
+    // (window move / dock resize) that don't change our pixel size — skip the realloc
+    // then. Only when the size truly changed do we reallocate + reset the transform.
+    if (canvasRef.width !== newW || canvasRef.height !== newH) {
+      canvasRef.width = newW;
+      canvasRef.height = newH;
+      context.setTransform(1, 0, 0, 1, 0, 0); // reset before re-applying dpi scale
+      context.scale(dpi, dpi);
+      // No blank frame: redraw the last peaks at the new size right away.
+      if (lastDrawArgs && width && height)
+        drawWaveformWithPeaks({ ...lastDrawArgs, context, width, height });
+    }
   });
 
   let animationFrame: number;
