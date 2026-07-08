@@ -45,7 +45,9 @@
     "update-deps": "taze -w && pnpm install",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "solid-viewport": "file:../solid-viewport"
+  },
   "peerDependencies": {
     "solid-js": ">=1.0.0"
   },
