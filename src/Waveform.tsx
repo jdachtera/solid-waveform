@@ -131,6 +131,34 @@ const Waveform = (allProps: WaveformProps) => {
     observer.unobserve(canvasRef!);
   });
 
+  // The canvas realloc + peak redraw are the expensive part of a resize: setting
+  // width/height reallocates + CLEARS the backing store (4× the pixels on Retina)
+  // and the peaks are re-fetched. Throttle JUST those to a few times/sec during a
+  // drag. Between updates the width:100%/height:100% canvas simply CSS-stretches its
+  // last bitmap (cheap, GPU-composited), snapping crisp on settle. Pointer/region/
+  // playhead math keeps reading the LIVE canvasDimensions() so positions stay exact.
+  const [renderDims, setRenderDims] = createSignal(canvasDimensions());
+  const RENDER_THROTTLE_MS = 140;
+  let renderSettle = 0;
+  let lastRenderApply = 0;
+  createEffect(() => {
+    const dims = canvasDimensions();
+    const now = performance.now();
+    clearTimeout(renderSettle);
+    // Trailing: always apply the final size a beat after the last change.
+    renderSettle = window.setTimeout(() => {
+      lastRenderApply = performance.now();
+      setRenderDims(dims);
+    }, RENDER_THROTTLE_MS);
+    // Leading + periodic: apply immediately if we haven't in a while, so a single
+    // change is instant and a long drag still refreshes crisp a few times/sec.
+    if (now - lastRenderApply >= RENDER_THROTTLE_MS) {
+      lastRenderApply = now;
+      setRenderDims(dims);
+    }
+  });
+  onCleanup(() => clearTimeout(renderSettle));
+
   // The last successful draw's arguments, so a resize can REPAINT immediately.
   // Setting a canvas's width/height clears its backing store, and our real draw is
   // async (requestAnimationFrame + await getValues) — that gap showed a blank
@@ -141,7 +169,7 @@ const Waveform = (allProps: WaveformProps) => {
   createEffect(() => {
     if (!context || !canvasRef) return;
 
-    const { height, width } = canvasDimensions();
+    const { height, width } = renderDims();
     const dpi = window.devicePixelRatio;
     const newW = Math.round(width * dpi);
     const newH = Math.round(height * dpi);
@@ -166,7 +194,9 @@ const Waveform = (allProps: WaveformProps) => {
   createEffect(() => {
     if (!dataLength()) return;
     if (!context) return;
-    const { height, width } = canvasDimensions();
+    // Throttled during resize (matches the canvas backing store above); the live
+    // canvasDimensions still drives pointer/region math elsewhere.
+    const { height, width } = renderDims();
     // Canvas not measured yet (ResizeObserver hasn't fired): a width of 0 makes
     // samplesPerPx Infinity, which overflows the peak-cache recursion. Wait
     // until the canvas has a real size before drawing.
@@ -323,7 +353,13 @@ const Waveform = (allProps: WaveformProps) => {
     position: props.position,
     zoom: props.zoom,
     updatePosition: props.onPositionChange,
-    dimensions: canvasDimensions(),
+    // Throttled dimensions (same as the canvas). Region/PlayHead children reposition
+    // from context.dimensions; feeding them the LIVE size made every child recompute
+    // its inline left/width on every resize frame — with many regions that's the
+    // dominant "style recalc" cost of a resize. renderDims only diverges from live
+    // WHILE dimensions are changing (a pane resize); during a normal pointer drag on
+    // the waveform it equals canvasDimensions, so hit-testing stays exact.
+    dimensions: renderDims(),
   });
 
   const [contextValue, setContextValue] = createStore<WaveformContext>(getContextValue());
