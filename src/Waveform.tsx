@@ -233,55 +233,54 @@ const Waveform = (allProps: WaveformProps) => {
   const handleWheel = (event: WheelEvent & { currentTarget: Element }) => {
     event.preventDefault();
     const { width, height, left } = canvasDimensions();
+    if (!width) return;
 
-    const deltaX = event.altKey ? event.deltaY : event.deltaX;
-    let deltaY = event.altKey ? event.deltaX : event.deltaY;
-    // Normalize the vertical delta across input devices: a mouse wheel reports
-    // large, infrequent notches (often deltaMode=LINE), a trackpad reports many
-    // small pixel deltas. Convert both to pixels so one tuning fits both.
-    if (event.deltaMode === 1) deltaY *= WHEEL_LINE_PX; // DOM_DELTA_LINE
-    else if (event.deltaMode === 2) deltaY *= height || WHEEL_LINE_PX; // DOM_DELTA_PAGE
+    // Normalize each delta to pixels: a mouse wheel reports large, infrequent
+    // notches (often deltaMode=LINE), a trackpad reports many small pixel deltas.
+    const px = (d: number, pageSize: number) =>
+      event.deltaMode === 1 ? d * WHEEL_LINE_PX : event.deltaMode === 2 ? d * (pageSize || WHEEL_LINE_PX) : d;
+    let deltaX = px(event.deltaX, width);
+    let deltaY = px(event.deltaY, height);
+    // Alt swaps the axes so a wheel-only mouse can pan (deltaY -> pan) and the
+    // vertical delta drives horizontal motion.
+    if (event.altKey) [deltaX, deltaY] = [deltaY, deltaX];
 
+    // Shift = amplitude (vertical) scale, unchanged.
     if (event.shiftKey) {
       const newScale = clamp(props.scale * Math.exp(-deltaY * ZOOM_SENSITIVITY), 0.1, 5);
       props.onScaleChange?.(newScale);
-    } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Pan by the swiped fraction of the VISIBLE window, so a gesture moves the
-      // same on-screen distance at any zoom / source length.
-      const visible = duration() / props.zoom;
-      const maxPosition = duration() - visible;
-      const newPosition = clamp(props.position + (deltaX / width) * visible, 0, maxPosition);
-      props.onPositionChange?.(newPosition);
-    } else if (deltaY !== 0) {
-      // Zoom is PROPORTIONAL to the (clamped) delta, applied exponentially: a
-      // mouse notch is one consistent step, and a trackpad's stream of tiny
-      // deltas accumulates smoothly instead of leaping a fixed step per event.
-      const clampedDy = clamp(deltaY, -WHEEL_MAX_PX, WHEEL_MAX_PX);
-      const dir = props.invertZoom ? 1 : -1;
-      const k = ZOOM_SENSITIVITY * (props.zoomSensitivity > 0 ? props.zoomSensitivity : 1);
-      const factor = Math.exp(dir * -clampedDy * k); // default: scroll DOWN (dy>0) → zoom in
-      const maxZoom = (dataLength() / width) * 50 * window.devicePixelRatio;
-      const newZoom = clamp(props.zoom * factor, 1, maxZoom);
-      const zoomedLength = duration() / props.zoom;
-
-      // Anchor on the pointer (keep the sample under the cursor fixed).
-      const pointerPositionPercentage = (event.clientX - left) / width;
-      const pointerPosition = props.position + zoomedLength * pointerPositionPercentage;
-      const newZoomedLength = duration() / newZoom;
-      const maxPosition = duration() - newZoomedLength;
-      const newPosition = clamp(
-        pointerPosition - pointerPositionPercentage * newZoomedLength,
-        0,
-        maxPosition,
-      );
-
-      props.onZoomChange?.(newZoom);
-      props.onPositionChange?.(newPosition);
+      return;
     }
+
+    // Otherwise, in ONE gesture and with no modifier: the horizontal delta pans and
+    // the vertical delta zooms (anchored on the pointer) — the solid-viewport
+    // "zoom-pan" model, which waveform + pianoroll need. Pan first, then anchor the
+    // zoom off the panned position so the sample under the cursor stays put.
+    const visible = duration() / props.zoom;
+    const maxPosition = Math.max(0, duration() - visible);
+    const panned =
+      deltaX !== 0 ? clamp(props.position + (deltaX / width) * visible, 0, maxPosition) : props.position;
+
+    const clampedDy = clamp(deltaY, -WHEEL_MAX_PX, WHEEL_MAX_PX);
+    const dir = props.invertZoom ? 1 : -1;
+    const k = ZOOM_SENSITIVITY * (props.zoomSensitivity > 0 ? props.zoomSensitivity : 1);
+    const factor = Math.exp(dir * -clampedDy * k); // default: scroll DOWN (dy>0) → zoom in
+    const maxZoom = (dataLength() / width) * 50 * window.devicePixelRatio;
+    const newZoom = clamp(props.zoom * factor, 1, maxZoom);
+
+    // Anchor on the pointer (keep the sample under the cursor fixed), measuring from
+    // the panned position at the OLD zoom.
+    const pointerPct = (event.clientX - left) / width;
+    const pointerPosition = panned + visible * pointerPct;
+    const newZoomedLength = duration() / newZoom;
+    const newMaxPosition = Math.max(0, duration() - newZoomedLength);
+    const newPosition = clamp(pointerPosition - pointerPct * newZoomedLength, 0, newMaxPosition);
+
+    if (newZoom !== props.zoom) props.onZoomChange?.(newZoom);
+    if (newPosition !== props.position) props.onPositionChange?.(newPosition);
   };
 
-  const handleScroll = (event: UIEvent & { currentTarget: Element }) => {
-    event.preventDefault();
+  const handleScroll = (event: { currentTarget: HTMLElement }) => {
     if (didUpdateScrollLeft) {
       didUpdateScrollLeft = false;
       return;

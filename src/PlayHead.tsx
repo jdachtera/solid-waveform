@@ -1,7 +1,6 @@
 import { createEffect, createMemo, JSX, mergeProps, splitProps, untrack } from "solid-js";
 import { useWaveformContext } from "./context";
 import { clamp } from "./helpers";
-import useViewPortScaler from "./useViewPortScaler";
 import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 const PlayHead = (

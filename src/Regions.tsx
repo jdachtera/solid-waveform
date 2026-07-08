@@ -2,7 +2,6 @@ import { createMemo, createSignal, createUniqueId, Index } from "solid-js";
 import { useWaveformContext } from "./context";
 import { randomColor } from "./helpers";
 import { Region } from "./Region";
-import useViewPortScaler from "./useViewPortScaler";
 import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 const Regions = (props: {

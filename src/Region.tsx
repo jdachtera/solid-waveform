@@ -1,7 +1,5 @@
 import { createEffect, onCleanup, For, createMemo, Show } from "solid-js";
 import { createStore } from "solid-js/store";
-import { useWaveformContext } from "./context";
-import useViewPortScaler from "./useViewPortScaler";
 import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 export type Region = { id: string; color: string; start: number; end: number };
