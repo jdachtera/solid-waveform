@@ -1,5 +1,5 @@
 {
-  "version": "1.1.2",
+  "version": "1.2.0",
   "name": "solid-waveform",
   "description": "Waveform UI Control for Solid JS apps",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "solid-viewport": "file:../solid-viewport"
+    "solid-viewport": "^0.1.0"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0"
