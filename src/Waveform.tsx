@@ -7,6 +7,15 @@ import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
 import { createStore } from "solid-js/store";
 
+// Wheel-zoom tuning. Zoom is exponential in the (device-normalized, clamped)
+// wheel delta so a mouse notch and a trackpad's stream of tiny deltas both feel
+// right: WHEEL_LINE_PX converts line-mode wheels to pixels; ZOOM_SENSITIVITY sets
+// the step (~1.2× per ~100px mouse notch); WHEEL_MAX_PX caps a single event so one
+// huge delta can't leap across the whole range.
+const WHEEL_LINE_PX = 16;
+const WHEEL_MAX_PX = 140;
+const ZOOM_SENSITIVITY = 0.002;
+
 // The waveform's audio source. Provide EITHER a decoded `buffer` (reads channel 0)
 // OR a precomputed `data` array of mono samples (full or decimated) plus its
 // `duration` in seconds — `data` lets a host keep a tiny per-source envelope
@@ -29,6 +38,10 @@ export type WaveformProps = {
   lineWidth?: number;
   logScale?: boolean;
   mode?: WaveformMode;
+  /** Invert the wheel zoom direction (default: scroll up = zoom in). */
+  invertZoom?: boolean;
+  /** Multiplier on the wheel-zoom step (1 = default). Tune for mouse vs trackpad. */
+  zoomSensitivity?: number;
 
   onPositionChange?: (position: number) => void;
   onZoomChange?: (position: number) => void;
@@ -37,7 +50,7 @@ export type WaveformProps = {
 
 const Waveform = (allProps: WaveformProps) => {
   const propsWithDefauls = mergeProps(
-    { logScale: false, mode: "peak" as WaveformMode, lineWidth: 1 },
+    { logScale: false, mode: "peak" as WaveformMode, lineWidth: 1, invertZoom: false, zoomSensitivity: 1 },
     allProps,
   );
   const [props, divProps] = splitProps(propsWithDefauls, [
@@ -51,6 +64,8 @@ const Waveform = (allProps: WaveformProps) => {
     "logScale",
     "mode",
     "lineWidth",
+    "invertZoom",
+    "zoomSensitivity",
     "onScaleChange",
     "onPositionChange",
     "onZoomChange",
@@ -220,31 +235,40 @@ const Waveform = (allProps: WaveformProps) => {
     const { width, height, left } = canvasDimensions();
 
     const deltaX = event.altKey ? event.deltaY : event.deltaX;
-    const deltaY = event.altKey ? event.deltaX : event.deltaY;
+    let deltaY = event.altKey ? event.deltaX : event.deltaY;
+    // Normalize the vertical delta across input devices: a mouse wheel reports
+    // large, infrequent notches (often deltaMode=LINE), a trackpad reports many
+    // small pixel deltas. Convert both to pixels so one tuning fits both.
+    if (event.deltaMode === 1) deltaY *= WHEEL_LINE_PX; // DOM_DELTA_LINE
+    else if (event.deltaMode === 2) deltaY *= height || WHEEL_LINE_PX; // DOM_DELTA_PAGE
 
     if (event.shiftKey) {
-      const newScale = clamp(props.scale * (1 + deltaY / height), 0.1, 5);
+      const newScale = clamp(props.scale * Math.exp(-deltaY * ZOOM_SENSITIVITY), 0.1, 5);
       props.onScaleChange?.(newScale);
     } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      const maxPosition = duration() - duration() / props.zoom;
-      const newPosition = clamp(
-        props.position + (deltaX / width / props.zoom) * 1000,
-        0,
-        maxPosition,
-      );
-
+      // Pan by the swiped fraction of the VISIBLE window, so a gesture moves the
+      // same on-screen distance at any zoom / source length.
+      const visible = duration() / props.zoom;
+      const maxPosition = duration() - visible;
+      const newPosition = clamp(props.position + (deltaX / width) * visible, 0, maxPosition);
       props.onPositionChange?.(newPosition);
-    } else {
+    } else if (deltaY !== 0) {
+      // Zoom is PROPORTIONAL to the (clamped) delta, applied exponentially: a
+      // mouse notch is one consistent step, and a trackpad's stream of tiny
+      // deltas accumulates smoothly instead of leaping a fixed step per event.
+      const clampedDy = clamp(deltaY, -WHEEL_MAX_PX, WHEEL_MAX_PX);
+      const dir = props.invertZoom ? 1 : -1;
+      const k = ZOOM_SENSITIVITY * (props.zoomSensitivity > 0 ? props.zoomSensitivity : 1);
+      const factor = Math.exp(dir * -clampedDy * k); // default: scroll DOWN (dy>0) → zoom in
       const maxZoom = (dataLength() / width) * 50 * window.devicePixelRatio;
-      const newZoom = clamp(props.zoom * (1 + deltaY / height), 1, maxZoom);
+      const newZoom = clamp(props.zoom * factor, 1, maxZoom);
       const zoomedLength = duration() / props.zoom;
 
+      // Anchor on the pointer (keep the sample under the cursor fixed).
       const pointerPositionPercentage = (event.clientX - left) / width;
       const pointerPosition = props.position + zoomedLength * pointerPositionPercentage;
-
       const newZoomedLength = duration() / newZoom;
-
-      const maxPosition = duration() - duration() / newZoom;
+      const maxPosition = duration() - newZoomedLength;
       const newPosition = clamp(
         pointerPosition - pointerPositionPercentage * newZoomedLength,
         0,
