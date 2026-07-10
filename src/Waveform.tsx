@@ -131,33 +131,14 @@ const Waveform = (allProps: WaveformProps) => {
     observer.unobserve(canvasRef!);
   });
 
-  // The canvas realloc + peak redraw are the expensive part of a resize: setting
-  // width/height reallocates + CLEARS the backing store (4× the pixels on Retina)
-  // and the peaks are re-fetched. Throttle JUST those to a few times/sec during a
-  // drag. Between updates the width:100%/height:100% canvas simply CSS-stretches its
-  // last bitmap (cheap, GPU-composited), snapping crisp on settle. Pointer/region/
-  // playhead math keeps reading the LIVE canvasDimensions() so positions stay exact.
-  const [renderDims, setRenderDims] = createSignal(canvasDimensions());
-  const RENDER_THROTTLE_MS = 140;
-  let renderSettle = 0;
-  let lastRenderApply = 0;
-  createEffect(() => {
-    const dims = canvasDimensions();
-    const now = performance.now();
-    clearTimeout(renderSettle);
-    // Trailing: always apply the final size a beat after the last change.
-    renderSettle = window.setTimeout(() => {
-      lastRenderApply = performance.now();
-      setRenderDims(dims);
-    }, RENDER_THROTTLE_MS);
-    // Leading + periodic: apply immediately if we haven't in a while, so a single
-    // change is instant and a long drag still refreshes crisp a few times/sec.
-    if (now - lastRenderApply >= RENDER_THROTTLE_MS) {
-      lastRenderApply = now;
-      setRenderDims(dims);
-    }
-  });
-  onCleanup(() => clearTimeout(renderSettle));
+  // Redraw crisp on EVERY size change — no throttle, no CSS-stretch. A resize
+  // frame's peaks are now derived transiently from the shared rough levels
+  // (getValues store:false), so re-fetching them per frame is cheap; the only
+  // real cost is the canvas realloc, and its guard below skips no-op (left/top-
+  // only) changes. Pointer/region/playhead math reads the LIVE canvasDimensions()
+  // so positions stay exact. (Previously throttled to ~7×/sec + CSS-stretched
+  // between, which read as a choppy/blurry waveform during a dock drag.)
+  const renderDims = canvasDimensions;
 
   // The last successful draw's arguments, so a resize can REPAINT immediately.
   // Setting a canvas's width/height clears its backing store, and our real draw is
@@ -227,6 +208,9 @@ const Waveform = (allProps: WaveformProps) => {
         start,
         end,
         mode,
+        // Live render: derive columns transiently from the shared rough levels — no
+        // per-width cache Map (which, swept over a resize, leaked + went choppy).
+        store: false,
       });
 
       const drawArgs = {

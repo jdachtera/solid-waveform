@@ -13,6 +13,7 @@ const createCachedWaveformSource = (data: WaveformData) => {
     start = 0,
     end = Math.ceil(data.length / samplesPerPx),
     mode = "peak",
+    store = true,
   }: {
     samplesPerPx: number;
 
@@ -20,6 +21,14 @@ const createCachedWaveformSource = (data: WaveformData) => {
     start?: number;
     end?: number;
     mode: WaveformMode;
+    // Memoize each queried column under this exact samplesPerPx? A live resize
+    // sweeps samplesPerPx continuously (width changes every frame), so storing
+    // would allocate a fresh per-width Map every frame AND retain them forever
+    // (a leak + GC churn — the resize gets choppier over time). The render path
+    // passes store:false: columns are derived transiently from the ROUNDED rough
+    // levels (which ARE memoized + shared across frames), so a resize is cheap and
+    // allocation-free. Warmup / fixed-zoom callers keep store:true.
+    store?: boolean;
   }) => {
     const peaks: number[][] = [];
 
@@ -30,7 +39,7 @@ const createCachedWaveformSource = (data: WaveformData) => {
     }
 
     for (let x = start; x <= end; x++) {
-      peaks.push(getValuesAtCached(samplesPerPx, x, mode));
+      peaks.push(getValuesAtCached(samplesPerPx, x, mode, store));
       if (x % 10000 === 0 && onProgress) {
         onProgress?.(x / end);
         await new Promise(requestAnimationFrame);
@@ -40,7 +49,12 @@ const createCachedWaveformSource = (data: WaveformData) => {
     return peaks;
   };
 
-  const getValuesAtCached = (samplesPerPx: number, x: number, mode: WaveformMode) => {
+  const getValuesAtCached = (
+    samplesPerPx: number,
+    x: number,
+    mode: WaveformMode,
+    store = true,
+  ): [number, number] => {
     // Defensive: a non-finite samplesPerPx would recurse forever below.
     if (!Number.isFinite(samplesPerPx)) {
       return [0, 0];
@@ -48,35 +62,40 @@ const createCachedWaveformSource = (data: WaveformData) => {
     if (samplesPerPx === 1) {
       return [data[x], data[x]];
     }
-    const peaksArray = getOrCreatePeaksCache(samplesPerPx, mode);
 
-    if (!peaksArray.has(x)) {
-      const multiplicator = 2;
-      const roughSamples = Math.ceil(samplesPerPx / multiplicator / 100) * 100;
+    // Only consult/populate the per-samplesPerPx cache when memoizing (store).
+    const peaksArray = store ? getOrCreatePeaksCache(samplesPerPx, mode) : undefined;
+    const cached = peaksArray?.get(x);
+    if (cached) return cached;
 
-      if (roughSamples > 100) {
-        let min = 0;
-        let max = 0;
+    const multiplicator = 2;
+    const roughSamples = Math.ceil(samplesPerPx / multiplicator / 100) * 100;
 
-        const start = Math.round((x * samplesPerPx) / roughSamples);
-        for (let i = 0; i < multiplicator; i++) {
-          const value = getValuesAtCached(roughSamples, start + i, mode);
-          if (value[1] > max) {
-            max = value[1];
-          }
-          if (value[0] < min) {
-            min = value[0];
-          }
+    let result: [number, number];
+    if (roughSamples > 100) {
+      let min = 0;
+      let max = 0;
+
+      const start = Math.round((x * samplesPerPx) / roughSamples);
+      for (let i = 0; i < multiplicator; i++) {
+        // The rough level (rounded to 100) IS memoized + shared across every frame
+        // and samplesPerPx — that's what makes the transient top-level cheap.
+        const value = getValuesAtCached(roughSamples, start + i, mode, true);
+        if (value[1] > max) {
+          max = value[1];
         }
-
-        peaksArray.set(x, [min, max]);
-      } else {
-        peaksArray.set(x, getPeakAt(data, samplesPerPx, x, mode));
+        if (value[0] < min) {
+          min = value[0];
+        }
       }
+
+      result = [min, max];
+    } else {
+      result = getPeakAt(data, samplesPerPx, x, mode);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return peaksArray.get(x)!;
+    peaksArray?.set(x, result);
+    return result;
   };
 
   const warmup = async (mode: WaveformMode, onProgress: (progress: number) => void) => {
