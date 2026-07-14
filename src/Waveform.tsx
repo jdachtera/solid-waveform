@@ -1,7 +1,10 @@
 import { JSX, mergeProps, Show } from "solid-js";
 import { onCleanup, onMount, createEffect, createMemo, createSignal, splitProps } from "solid-js";
 
-import createCachedWaveformSource, { WaveformMode, WaveformData } from "./createCachedWaveformPeaks";
+import createCachedWaveformSource, {
+  WaveformMode,
+  WaveformData,
+} from "./createCachedWaveformPeaks";
 import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
@@ -50,7 +53,13 @@ export type WaveformProps = {
 
 const Waveform = (allProps: WaveformProps) => {
   const propsWithDefauls = mergeProps(
-    { logScale: false, mode: "peak" as WaveformMode, lineWidth: 1, invertZoom: false, zoomSensitivity: 1 },
+    {
+      logScale: false,
+      mode: "peak" as WaveformMode,
+      lineWidth: 1,
+      invertZoom: false,
+      zoomSensitivity: 1,
+    },
     allProps,
   );
   const [props, divProps] = splitProps(propsWithDefauls, [
@@ -252,7 +261,11 @@ const Waveform = (allProps: WaveformProps) => {
     // Normalize each delta to pixels: a mouse wheel reports large, infrequent
     // notches (often deltaMode=LINE), a trackpad reports many small pixel deltas.
     const px = (d: number, pageSize: number) =>
-      event.deltaMode === 1 ? d * WHEEL_LINE_PX : event.deltaMode === 2 ? d * (pageSize || WHEEL_LINE_PX) : d;
+      event.deltaMode === 1
+        ? d * WHEEL_LINE_PX
+        : event.deltaMode === 2
+        ? d * (pageSize || WHEEL_LINE_PX)
+        : d;
     let deltaX = px(event.deltaX, width);
     let deltaY = px(event.deltaY, height);
     // Alt swaps the axes so a wheel-only mouse can pan (deltaY -> pan) and the
@@ -273,7 +286,9 @@ const Waveform = (allProps: WaveformProps) => {
     const visible = duration() / props.zoom;
     const maxPosition = Math.max(0, duration() - visible);
     const panned =
-      deltaX !== 0 ? clamp(props.position + (deltaX / width) * visible, 0, maxPosition) : props.position;
+      deltaX !== 0
+        ? clamp(props.position + (deltaX / width) * visible, 0, maxPosition)
+        : props.position;
 
     const clampedDy = clamp(deltaY, -WHEEL_MAX_PX, WHEEL_MAX_PX);
     const dir = props.invertZoom ? 1 : -1;
