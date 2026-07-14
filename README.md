@@ -73,6 +73,35 @@ const [regions, setRegions] = createSignal<Region[]>([]);
 </Waveform>;
 ```
 
+### Markers (warp / cue points)
+
+`Markers` overlays draggable point markers on the waveform — a play‑start / cue / warp
+point inside a region, distinct from `Region`'s span‑with‑edges. Each `MarkerTick`
+renders a thin labelled line: **drag** to move it, **double‑click** to delete, and
+**Option/Alt‑click** empty space to add one. Positions are in the waveform's time units.
+
+```tsx
+import { Waveform, Markers, type Marker } from "solid-waveform";
+
+const [markers, setMarkers] = createSignal<Marker[]>([]);
+
+<Waveform buffer={audioBuffer()} position={position()} zoom={zoom()} scale={scale()}>
+  <Markers
+    markers={markers()}
+    onAddMarker={(position) => setMarkers([...markers(), { id: crypto.randomUUID(), position }])}
+    onUpdateMarker={(index, position) =>
+      setMarkers(markers().map((m, i) => (i === index ? { ...m, position } : m)))
+    }
+    onRemoveMarker={(index) => setMarkers(markers().filter((_, i) => i !== index))}
+    onClickMarker={(index, event) => {/* audition marker index */}}
+  />
+</Waveform>;
+```
+
+A `Marker` is `{ id: string; position: number; color?: string; label?: string }`. Use
+`MarkerTick` directly if you want to render/handle individual markers yourself. Built for
+sample‑slicer / warp‑marker UIs (e.g. a breakbeat re‑sequencer mapping markers to keys).
+
 ### Oscilloscope
 
 ```tsx
