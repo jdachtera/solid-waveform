@@ -245,11 +245,7 @@ const Demo: Component = () => {
           </div>
 
           <div class={`${styles.control} ${styles.checkRow}`}>
-            <input
-              type="checkbox"
-              checked={logScale()}
-              onChange={() => setLogScale(!logScale())}
-            />
+            <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
             <label>Logarithmic scale</label>
           </div>
         </div>
