@@ -1,4 +1,4 @@
-import { createMemo, Index, Show, splitProps, JSX } from "solid-js";
+import { createMemo, Index, Show, splitProps, onMount, onCleanup, JSX } from "solid-js";
 import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
 /** A warp/cue marker: a play-start point inside a looping region, addressable by a
@@ -7,8 +7,9 @@ import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 export type Marker = { id: string; position: number; color?: string; label?: string };
 
 /** A single draggable marker tick (a thin vertical line + optional key label). The
- *  tick captures its own drag (cue-move) and double-click (delete); the surrounding
- *  Markers container owns the option/alt-click "add" gesture. */
+ *  tick captures its own drag (cue-move) and double-click (delete). It sits above
+ *  the (pointer-events-transparent) Markers overlay on its own z-index, so it stays
+ *  grabbable even when another full-area layer (e.g. Regions) is stacked alongside. */
 export const MarkerTick = (props: {
   marker: Marker;
   onUpdate?: (position: number) => void;
@@ -70,9 +71,18 @@ export const MarkerTick = (props: {
   );
 };
 
-/** Overlay of marker ticks over the waveform. Option/Alt-click on empty space adds a
- *  marker at the click position (`onAddMarker`); ticks drag to move their cue and
- *  double-click to delete. A plain click passes through (the tick handles its own). */
+/** Overlay of marker ticks over the waveform, designed to COMPOSE with any other
+ *  full-area layer (drop it in next to `<Regions>` — order doesn't matter). Ticks
+ *  drag to move their cue and double-click to delete; Option/Alt-click on empty
+ *  space adds a marker (`onAddMarker`).
+ *
+ *  The overlay itself is `pointer-events: none`, so a plain drag falls straight
+ *  THROUGH to the layer beneath (e.g. a region-create drag) instead of being
+ *  swallowed — only the thin ticks re-enable pointer events. The one gesture the
+ *  overlay claims, the Option/Alt-click "add", is caught in the CAPTURE phase on
+ *  window (before any sibling layer's own mousedown handler runs) and only within
+ *  this overlay's own bounds, then `stopPropagation`'d so the layer beneath never
+ *  starts a competing gesture. */
 export const Markers = (
   allProps: {
     markers?: Marker[];
@@ -93,8 +103,31 @@ export const Markers = (
     "onClickMarker",
   ]);
 
+  // Claim the Option/Alt-click "add" in the capture phase, bounded to this overlay,
+  // so it wins over a sibling layer's handler without the overlay having to sit on
+  // top and block everything else. Left button only; every other event is ignored
+  // and left to propagate to whatever is underneath.
+  let containerEl: HTMLDivElement | undefined;
+  const onCaptureDown = (event: MouseEvent) => {
+    if (event.button !== 0 || !event.altKey || !props.onAddMarker || !containerEl) return;
+    const r = containerEl.getBoundingClientRect();
+    if (
+      event.clientX < r.left ||
+      event.clientX > r.right ||
+      event.clientY < r.top ||
+      event.clientY > r.bottom
+    )
+      return; // outside this waveform — leave it for anyone else on the page
+    event.preventDefault();
+    event.stopPropagation();
+    props.onAddMarker(viewPort.getPosition(event.clientX));
+  };
+  onMount(() => window.addEventListener("mousedown", onCaptureDown, true));
+  onCleanup(() => window.removeEventListener("mousedown", onCaptureDown, true));
+
   return (
     <div
+      ref={containerEl}
       class="Waveform-Markers"
       {...divProps}
       style={{
@@ -103,16 +136,11 @@ export const Markers = (
         top: 0,
         width: "100%",
         height: "100%",
-        // The container itself only reacts to the alt-click add; ticks re-enable
-        // pointer events. Plain space is inert so it doesn't fight the waveform.
-        "pointer-events": "auto",
+        // Transparent to pointers: plain drags pass through to the layer beneath;
+        // only the ticks re-enable events. The add gesture is handled in capture
+        // (see onCaptureDown) so it needs no full-area event sink here.
+        "pointer-events": "none",
         ...(typeof divProps.style === "object" && divProps.style),
-      }}
-      onMouseDown={(event) => {
-        if (!event.altKey) return; // only Option/Alt-click adds a marker
-        event.preventDefault();
-        event.stopPropagation();
-        props.onAddMarker?.(viewPort.getPosition(event.clientX));
       }}
     >
       <Index each={props.markers}>

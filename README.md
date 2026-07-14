@@ -102,6 +102,20 @@ A `Marker` is `{ id: string; position: number; color?: string; label?: string }`
 `MarkerTick` directly if you want to render/handle individual markers yourself. Built for
 sample‑slicer / warp‑marker UIs (e.g. a breakbeat re‑sequencer mapping markers to keys).
 
+**Composes with `Regions`.** Drop `<Markers>` and `<Regions>` into the same `<Waveform>`
+(order doesn't matter) and they don't fight over the pointer: the `Markers` overlay is
+`pointer-events: none`, so a plain drag falls straight through to a region‑create drag,
+while the ticks stay grabbable on their own z‑index. The one gesture `Markers` claims —
+Option/Alt‑click to add — is caught in the capture phase, bounded to the waveform, so it
+wins over the region surface without blocking anything else.
+
+```tsx
+<Waveform buffer={audioBuffer()} position={position()} zoom={zoom()} scale={scale()}>
+  <Regions regions={regions()} onCreateRegion={...} onUpdateRegion={...} />
+  <Markers markers={markers()} onAddMarker={...} onUpdateMarker={...} onRemoveMarker={...} />
+</Waveform>;
+```
+
 ### Oscilloscope
 
 ```tsx
