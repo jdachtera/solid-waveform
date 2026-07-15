@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "name": "solid-waveform",
   "description": "Waveform UI Control for Solid JS apps",
   "license": "MIT",
@@ -40,6 +40,7 @@
     "build-dev": "vite build dev",
     "test": "echo \"test not setup\"",
     "build": "rollup -c && pnpm build-dev",
+    "prepack": "pnpm build",
     "prepublishOnly": "pnpm build",
     "format": "prettier -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",
     "update-deps": "taze -w && pnpm install",
