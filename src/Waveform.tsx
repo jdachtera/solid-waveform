@@ -51,7 +51,7 @@ export type WaveformProps = {
   onScaleChange?: (scale: number) => void;
 } & JSX.IntrinsicElements["div"];
 
-const Waveform = (allProps: WaveformProps) => {
+const Waveform = (allProps: WaveformProps): JSX.Element => {
   const propsWithDefauls = mergeProps(
     {
       logScale: false,

@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, For, createMemo, Show } from "solid-js";
+import { createEffect, onCleanup, For, createMemo, Show, JSX } from "solid-js";
 import { createStore } from "solid-js/store";
 import useWaveformViewPortScaler from "./useWaveformViewportScaler";
 
@@ -13,7 +13,7 @@ export const Region = (props: {
   onUpdateRegion?: (region: Region) => void;
   onClickRegion?: (region: Region, event: MouseEvent) => void;
   onDblClickRegion?: (region: Region, event: MouseEvent) => void;
-}) => {
+}): JSX.Element => {
   const viewPort = useWaveformViewPortScaler();
 
   const virtualDimensions = createMemo(() =>

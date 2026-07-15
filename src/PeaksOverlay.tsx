@@ -27,7 +27,7 @@ export const PeaksOverlay = (
     scale?: number;
     lineWidth?: number;
   } & Omit<JSX.IntrinsicElements["div"], "style">,
-) => {
+): JSX.Element => {
   const viewPort = useWaveformViewPortScaler();
   const [props, divProps] = splitProps(allProps, [
     "data",

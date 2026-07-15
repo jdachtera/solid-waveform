@@ -15,7 +15,7 @@ export const MarkerTick = (props: {
   onUpdate?: (position: number) => void;
   onRemove?: (event: MouseEvent) => void;
   onClick?: (event: MouseEvent) => void;
-}) => {
+}): JSX.Element => {
   const viewPort = useWaveformViewPortScaler();
   const left = createMemo(() => viewPort.getCoordinates(props.marker.position));
 
@@ -91,7 +91,7 @@ export const Markers = (
     onRemoveMarker?: (index: number) => void;
     onClickMarker?: (index: number, event: MouseEvent) => void;
   } & JSX.IntrinsicElements["div"],
-) => {
+): JSX.Element => {
   const viewPort = useWaveformViewPortScaler();
   // Do NOT destructure props (Solid props are reactive getters); splitProps keeps
   // `markers` reactive so the tick list updates when a marker is added/moved/removed.

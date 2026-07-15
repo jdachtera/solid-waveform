@@ -1,7 +1,19 @@
 export type WaveformData = Float32Array | number[];
 export type WaveformMode = "peak" | "rms";
 
-const createCachedWaveformSource = (data: WaveformData) => {
+const createCachedWaveformSource = (
+  data: WaveformData,
+): {
+  warmup: (mode: WaveformMode, onProgress: (progress: number) => void) => Promise<void>;
+  getValues: (args: {
+    samplesPerPx: number;
+    onProgress?: (progress: number) => void;
+    start?: number;
+    end?: number;
+    mode: WaveformMode;
+    store?: boolean;
+  }) => Promise<number[][]>;
+} => {
   const cache: Record<WaveformMode, Map<number, Map<number, [number, number]>>> = {
     peak: new Map(),
     rms: new Map(),

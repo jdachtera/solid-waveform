@@ -1,4 +1,4 @@
-import { createMemo, createSignal, createUniqueId, Index } from "solid-js";
+import { createMemo, createSignal, createUniqueId, Index, JSX } from "solid-js";
 import { useWaveformContext } from "./context";
 import { randomColor } from "./helpers";
 import { Region } from "./Region";
@@ -10,7 +10,7 @@ const Regions = (props: {
   onUpdateRegion?: (region: Region) => void;
   onClickRegion?: (region: Region, event: MouseEvent) => void;
   onDblClickRegion?: (region: Region, event: MouseEvent) => void;
-}) => {
+}): JSX.Element => {
   const [newRegion, setNewRegion] = createSignal<Region>();
   const context = useWaveformContext();
   const viewPort = useWaveformViewPortScaler();

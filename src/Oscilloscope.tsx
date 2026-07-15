@@ -13,7 +13,7 @@ const Oscilloscope = (
     slowNessFactor?: number;
     mode?: WaveformMode;
   } & JSX.IntrinsicElements["div"],
-) => {
+): JSX.Element => {
   const propsWithDefaults = mergeProps(allProps, {
     slowNessFactor: 250,
     scale: 1,

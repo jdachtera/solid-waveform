@@ -9,7 +9,7 @@ const PlayHead = (
     sync?: boolean;
     onPlayHeadPositionChange?: (playHeadPosition: number) => void;
   } & JSX.IntrinsicElements["div"],
-) => {
+): JSX.Element => {
   const propsWithDefauls = mergeProps({ playHeadPosition: 0, sync: false }, allProps);
   const [props, divProps] = splitProps(propsWithDefauls, [
     "playHeadPosition",
