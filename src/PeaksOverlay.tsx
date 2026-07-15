@@ -68,7 +68,13 @@ export const PeaksOverlay = (
     const src = createCachedWaveformSource(arr);
     const samplesPerPx = arr.length / w;
     if (!Number.isFinite(samplesPerPx) || samplesPerPx <= 0) return;
-    const peaks = await src.getValues({ samplesPerPx, start: 0, end: w, mode: "peak", store: false });
+    const peaks = await src.getValues({
+      samplesPerPx,
+      start: 0,
+      end: w,
+      mode: "peak",
+      store: false,
+    });
     if (canvasRef !== canvas) return; // remounted mid-await
 
     const lw = (props.lineWidth ?? 1) * dpr;
@@ -78,7 +84,11 @@ export const PeaksOverlay = (
       height: h,
       context: ctx,
       scale: props.scale ?? 1,
-      waveformStyle: { strokeStyle: props.color ?? "orange", opacity: props.opacity ?? 1, lineWidth: lw },
+      waveformStyle: {
+        strokeStyle: props.color ?? "orange",
+        opacity: props.opacity ?? 1,
+        lineWidth: lw,
+      },
       peaksStyle: { opacity: 0 },
       sampleDotsStyle: { opacity: 0 },
     });
