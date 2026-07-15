@@ -5,6 +5,7 @@ import Oscilloscope from "./Oscilloscope";
 import Regions from "./Regions";
 import PlayHead from "./PlayHead";
 import Markers, { MarkerTick, type Marker } from "./Markers";
+import PeaksOverlay from "./PeaksOverlay";
 
 export type { WaveformData, WaveformMode } from "./createCachedWaveformPeaks";
 export type { WaveformSource, WaveformProps, Marker };
@@ -17,5 +18,6 @@ export {
   PlayHead,
   Markers,
   MarkerTick,
+  PeaksOverlay,
   createCachedWaveformSource as createCachedWaveformPeaks,
 };

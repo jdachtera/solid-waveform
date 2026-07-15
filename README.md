@@ -116,6 +116,30 @@ wins over the region surface without blocking anything else.
 </Waveform>;
 ```
 
+### PeaksOverlay (warped / secondary waveform)
+
+`PeaksOverlay` draws a **second peaks envelope confined to a sub‑region `[start, end]`** of
+the waveform's time axis — an overlay layer for e.g. a time‑warped / time‑stretched
+rendering of one section on top of the raw waveform. The `data` you pass is the
+already‑transformed envelope and is drawn uniformly across the region, so the transform
+is baked into `data` and the component stays a dumb "draw these peaks over this span"
+primitive. Like `Regions`/`Markers` it positions through the shared viewport scaler (so it
+tracks zoom/pan) and is `pointer-events: none` (purely visual).
+
+```tsx
+import { Waveform, PeaksOverlay } from "solid-waveform";
+
+<Waveform data={rawEnvelope()} duration={duration()} position={position()} zoom={zoom()} scale={scale()}>
+  {/* draw the warped envelope over just [1s, 4s], dimming the raw wave beneath it */}
+  <PeaksOverlay data={warpedEnvelope()} start={1} end={4} color="#ff9a3c" fill="rgba(0,0,0,0.5)" />
+</Waveform>;
+```
+
+Props: `data` (the envelope to draw), `start`/`end` (region bounds in the waveform's time
+units), and optional `color`, `fill` (region background tint), `opacity`, `scale`,
+`lineWidth`. Built for warp‑marker / breakbeat UIs that show "how the loop will sound"
+next to the raw source.
+
 ### Oscilloscope
 
 ```tsx
