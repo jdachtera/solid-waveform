@@ -49,6 +49,7 @@ const Demo: Component = () => {
   const [scale, setScale] = createSignal(1);
   const [mode, setMode] = createSignal<WaveformMode>("peak");
   const [logScale, setLogScale] = createSignal(false);
+  const [oscLatency, setOscLatency] = createSignal(250);
   const [regions, setRegions] = createSignal<Region[]>([]);
 
   const handleEnded = () => {
@@ -151,6 +152,8 @@ const Demo: Component = () => {
           analyzerNode={analyser}
           scale={2}
           mode={mode()}
+          slowNessFactor={oscLatency()}
+          strokeStyle="#6ea8fe"
         ></Oscilloscope>
       </div>
 
@@ -247,6 +250,18 @@ const Demo: Component = () => {
           <div class={`${styles.control} ${styles.checkRow}`}>
             <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
             <label>Logarithmic scale</label>
+          </div>
+
+          <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
+            <label>Oscilloscope latency — {oscLatency()}ms</label>
+            <input
+              type="range"
+              min={0}
+              max={1000}
+              step={10}
+              value={oscLatency()}
+              onInput={(event) => setOscLatency(event.currentTarget.valueAsNumber)}
+            />
           </div>
         </div>
       </div>

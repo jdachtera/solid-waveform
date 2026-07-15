@@ -83,9 +83,15 @@ export const drawWaveformWithPeaks = async ({
 }) => {
   const startY = height / 2;
 
+  // Log-scale an amplitude in [0,1] to a display offset. log10(a*20)*0.7 is 0 at
+  // a=0.05 and negative below it; raw, that means silence (a=0 -> log10(0) = -Inf)
+  // and any quiet signal invert and blow up to full canvas height. Floor at 0 so
+  // anything at/below the noise floor renders flat at the center line.
+  const logAmp = (v: number) => Math.max(0, Math.log10(Math.abs(v) * 20) * 0.7);
+
   const scaledPeaks = peaks.map(([min, max], i, peaks): PeaksEntry => {
-    const minValue = logScale ? -Math.log10(-min * 20) * 0.7 : min;
-    const maxValue = logScale ? Math.log10(max * 20) * 0.7 : max;
+    const minValue = logScale ? -logAmp(min) : min;
+    const maxValue = logScale ? logAmp(max) : max;
 
     const x = (i / peaks.length) * width;
 

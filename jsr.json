@@ -1,6 +1,6 @@
 {
   "name": "@jdachtera/solid-waveform",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "exports": "./src/index.tsx",
   "publish": {
     "include": ["src", "README.md", "LICENSE"]

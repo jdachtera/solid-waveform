@@ -14,13 +14,16 @@ const Oscilloscope = (
     mode?: WaveformMode;
   } & JSX.IntrinsicElements["div"],
 ): JSX.Element => {
-  const propsWithDefaults = mergeProps(allProps, {
-    slowNessFactor: 250,
-    scale: 1,
-    mode: "peak" as WaveformMode,
-    lineWidth: 1,
-    strokeStyle: "rgb(0,0,0)" as string | CanvasGradient | CanvasPattern,
-  });
+  const propsWithDefaults = mergeProps(
+    {
+      slowNessFactor: 250,
+      scale: 1,
+      mode: "peak" as WaveformMode,
+      lineWidth: 1,
+      strokeStyle: "rgb(0,0,0)" as string | CanvasGradient | CanvasPattern,
+    },
+    allProps,
+  );
   const [props, divProps] = splitProps(propsWithDefaults, [
     "analyzerNode",
     "slowNessFactor",
