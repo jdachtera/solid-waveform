@@ -124,65 +124,65 @@ const Demo: Component = () => {
       <div class={styles.board}>
         <div class={styles.boardMain}>
           <div class={`${styles.panel} ${styles.panelWave}`}>
-        <div class={styles.panelHead}>
-          <span class={styles.panelTitle}>Waveform</span>
-          <span class={styles.panelMeta}>
-            <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
-            <span class={styles.metaSep}>/</span>
-            <span class={styles.time}>{fmtTime(duration())}</span>
-          </span>
-        </div>
-        <div class={styles.stage}>
-          <Show
-            when={!audioBuffer.loading && !audioBuffer.error}
-            fallback={
-              <div class={styles.stagePlaceholder}>
-                {audioBuffer.error ? "Failed to load audio" : "Decoding audio…"}
-              </div>
-            }
-          >
-            <Waveform
-              style={{ height: "100%" }}
-              buffer={audioBuffer()}
-              position={position()}
-              zoom={zoom()}
-              scale={scale()}
-              logScale={logScale()}
-              mode={mode()}
-              onPositionChange={setPosition}
-              onZoomChange={setZoom}
-              onScaleChange={setScale}
-              strokeStyle="#6ea8fe"
-            >
-              <Regions
-                regions={regions()}
-                onUpdateRegion={(region) => {
-                  const index = regions().findIndex(({ id }) => id === region.id);
-                  setRegions([
-                    ...regions().slice(0, index),
-                    region,
-                    ...regions().slice(index + 1),
-                  ]);
-                }}
-                onCreateRegion={(region) => {
-                  setRegions([...regions(), region]);
-                }}
-                onClickRegion={playRegion}
-              />
-              <PlayHead
-                playHeadPosition={playHeadPosition()}
-                sync={syncPlayHead()}
-                onPlayHeadPositionChange={(newPlayheadPosition) => {
-                  setPlayHeadPosition(newPlayheadPosition);
-                  if (isPlaying()) {
-                    play(newPlayheadPosition);
-                  }
-                }}
-              />
-            </Waveform>
-          </Show>
-        </div>
-      </div>
+            <div class={styles.panelHead}>
+              <span class={styles.panelTitle}>Waveform</span>
+              <span class={styles.panelMeta}>
+                <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
+                <span class={styles.metaSep}>/</span>
+                <span class={styles.time}>{fmtTime(duration())}</span>
+              </span>
+            </div>
+            <div class={styles.stage}>
+              <Show
+                when={!audioBuffer.loading && !audioBuffer.error}
+                fallback={
+                  <div class={styles.stagePlaceholder}>
+                    {audioBuffer.error ? "Failed to load audio" : "Decoding audio…"}
+                  </div>
+                }
+              >
+                <Waveform
+                  style={{ height: "100%" }}
+                  buffer={audioBuffer()}
+                  position={position()}
+                  zoom={zoom()}
+                  scale={scale()}
+                  logScale={logScale()}
+                  mode={mode()}
+                  onPositionChange={setPosition}
+                  onZoomChange={setZoom}
+                  onScaleChange={setScale}
+                  strokeStyle="#6ea8fe"
+                >
+                  <Regions
+                    regions={regions()}
+                    onUpdateRegion={(region) => {
+                      const index = regions().findIndex(({ id }) => id === region.id);
+                      setRegions([
+                        ...regions().slice(0, index),
+                        region,
+                        ...regions().slice(index + 1),
+                      ]);
+                    }}
+                    onCreateRegion={(region) => {
+                      setRegions([...regions(), region]);
+                    }}
+                    onClickRegion={playRegion}
+                  />
+                  <PlayHead
+                    playHeadPosition={playHeadPosition()}
+                    sync={syncPlayHead()}
+                    onPlayHeadPositionChange={(newPlayheadPosition) => {
+                      setPlayHeadPosition(newPlayheadPosition);
+                      if (isPlaying()) {
+                        play(newPlayheadPosition);
+                      }
+                    }}
+                  />
+                </Waveform>
+              </Show>
+            </div>
+          </div>
 
           <div class={`${styles.panel} ${styles.panelOsc}`}>
             <div class={styles.panelHead}>
@@ -203,204 +203,204 @@ const Demo: Component = () => {
         </div>
 
         <div class={styles.boardSide}>
-      <div class={styles.panel}>
-        <h2 class={styles.sectionTitle}>Controls</h2>
+          <div class={styles.panel}>
+            <h2 class={styles.sectionTitle}>Controls</h2>
 
-        <div class={styles.transport}>
-          <button class={`${styles.button} ${styles.primary}`} onClick={togglePlay}>
-            {isPlaying() ? "⏸ Pause" : "▶ Play"}
-          </button>
-          <div class={styles.transportTime}>
-            <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
-            <span class={styles.metaSep}>/</span>
-            <span class={styles.timeMuted}>{fmtTime(duration())}</span>
-          </div>
-        </div>
-
-        <div class={styles.controls}>
-          <div class={`${styles.control} ${styles.urlRow}`} style={{ "grid-column": "1 / -1" }}>
-            <input
-              value={inputUrl()}
-              onChange={(event) => setInputUrl(event.currentTarget.value)}
-              placeholder="Audio URL"
-            />
-            <button class={styles.button} onClick={() => setUrl(inputUrl())}>
-              Load
-            </button>
-          </div>
-
-          <div class={styles.control}>
-            <label>Mode</label>
-            <div class={styles.segmented}>
-              <button
-                class={`${styles.seg} ${mode() === "peak" ? styles.segActive : ""}`}
-                onClick={() => setMode("peak")}
-              >
-                Peak
+            <div class={styles.transport}>
+              <button class={`${styles.button} ${styles.primary}`} onClick={togglePlay}>
+                {isPlaying() ? "⏸ Pause" : "▶ Play"}
               </button>
-              <button
-                class={`${styles.seg} ${mode() === "rms" ? styles.segActive : ""}`}
-                onClick={() => setMode("rms")}
-              >
-                RMS
-              </button>
+              <div class={styles.transportTime}>
+                <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
+                <span class={styles.metaSep}>/</span>
+                <span class={styles.timeMuted}>{fmtTime(duration())}</span>
+              </div>
+            </div>
+
+            <div class={styles.controls}>
+              <div class={`${styles.control} ${styles.urlRow}`} style={{ "grid-column": "1 / -1" }}>
+                <input
+                  value={inputUrl()}
+                  onChange={(event) => setInputUrl(event.currentTarget.value)}
+                  placeholder="Audio URL"
+                />
+                <button class={styles.button} onClick={() => setUrl(inputUrl())}>
+                  Load
+                </button>
+              </div>
+
+              <div class={styles.control}>
+                <label>Mode</label>
+                <div class={styles.segmented}>
+                  <button
+                    class={`${styles.seg} ${mode() === "peak" ? styles.segActive : ""}`}
+                    onClick={() => setMode("peak")}
+                  >
+                    Peak
+                  </button>
+                  <button
+                    class={`${styles.seg} ${mode() === "rms" ? styles.segActive : ""}`}
+                    onClick={() => setMode("rms")}
+                  >
+                    RMS
+                  </button>
+                </div>
+              </div>
+
+              <div class={styles.control}>
+                <label>Amplitude scale</label>
+                <div class={styles.segmented}>
+                  <button
+                    class={`${styles.seg} ${!logScale() ? styles.segActive : ""}`}
+                    onClick={() => setLogScale(false)}
+                  >
+                    Linear
+                  </button>
+                  <button
+                    class={`${styles.seg} ${logScale() ? styles.segActive : ""}`}
+                    onClick={() => setLogScale(true)}
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+
+              <div class={styles.control}>
+                <label>Zoom — {zoom().toFixed(1)}×</label>
+                <div class={styles.zoomRow}>
+                  <button class={styles.iconButton} onClick={() => zoomBy(1 / 1.6)}>
+                    −
+                  </button>
+                  <button class={styles.button} onClick={() => setZoom(1)}>
+                    Fit
+                  </button>
+                  <button class={styles.iconButton} onClick={() => zoomBy(1.6)}>
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div class={styles.control}>
+                <label>Position</label>
+                <input
+                  type="number"
+                  value={position().toFixed(3)}
+                  onInput={(event) => {
+                    if (!isNaN(event.currentTarget.valueAsNumber))
+                      setPosition(event.currentTarget.valueAsNumber);
+                  }}
+                />
+              </div>
+
+              <div class={styles.control}>
+                <label>Vertical scale — {scale().toFixed(1)}×</label>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={4}
+                  step={0.1}
+                  value={scale()}
+                  onInput={(event) => setScale(event.currentTarget.valueAsNumber)}
+                />
+              </div>
+
+              <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
+                <label>Playhead — {fmtTime(playHeadPosition())}</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration() || undefined}
+                  step={0.001}
+                  value={playHeadPosition()}
+                  onInput={(event) => {
+                    setPlayHeadPosition(event.currentTarget.valueAsNumber);
+                    if (isPlaying()) {
+                      play(event.currentTarget.valueAsNumber);
+                    }
+                  }}
+                />
+              </div>
+
+              <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
+                <label>Oscilloscope latency — {oscLatency()}ms</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1000}
+                  step={10}
+                  value={oscLatency()}
+                  onInput={(event) => setOscLatency(event.currentTarget.valueAsNumber)}
+                />
+              </div>
+
+              <div class={`${styles.control} ${styles.checkRow}`}>
+                <input
+                  type="checkbox"
+                  checked={syncPlayHead()}
+                  onChange={() => setSyncPlayHead(!syncPlayHead())}
+                />
+                <label>Follow playhead</label>
+              </div>
             </div>
           </div>
 
-          <div class={styles.control}>
-            <label>Amplitude scale</label>
-            <div class={styles.segmented}>
-              <button
-                class={`${styles.seg} ${!logScale() ? styles.segActive : ""}`}
-                onClick={() => setLogScale(false)}
-              >
-                Linear
-              </button>
-              <button
-                class={`${styles.seg} ${logScale() ? styles.segActive : ""}`}
-                onClick={() => setLogScale(true)}
-              >
-                Log
-              </button>
+          <div class={`${styles.panel} ${styles.panelRegions}`}>
+            <div class={styles.panelHead}>
+              <span class={styles.sectionTitle} style={{ margin: 0 }}>
+                Regions
+              </span>
+              <Show when={regions().length > 0}>
+                <button class={`${styles.button} ${styles.danger}`} onClick={() => setRegions([])}>
+                  Clear all
+                </button>
+              </Show>
             </div>
+            <Show
+              when={regions().length > 0}
+              fallback={<p class={styles.empty}>Drag on the waveform to create a region.</p>}
+            >
+              <div class={styles.tableWrap}>
+                <table class={styles.table}>
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Start</th>
+                      <th>End</th>
+                      <th>Duration</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <Index each={regions()}>
+                      {(region) => (
+                        <tr>
+                          <td>
+                            <span class={styles.swatch} style={{ background: region().color }} />
+                          </td>
+                          <td>{fmtTime(region().start)}</td>
+                          <td>{fmtTime(region().end)}</td>
+                          <td>{fmtTime(region().end - region().start)}</td>
+                          <td class={styles.rowActions}>
+                            <button class={styles.button} onClick={() => playRegion(region())}>
+                              ▶
+                            </button>
+                            <button
+                              class={`${styles.iconButton} ${styles.danger}`}
+                              onClick={() =>
+                                setRegions(regions().filter(({ id }) => id !== region().id))
+                              }
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </Index>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
           </div>
-
-          <div class={styles.control}>
-            <label>Zoom — {zoom().toFixed(1)}×</label>
-            <div class={styles.zoomRow}>
-              <button class={styles.iconButton} onClick={() => zoomBy(1 / 1.6)}>
-                −
-              </button>
-              <button class={styles.button} onClick={() => setZoom(1)}>
-                Fit
-              </button>
-              <button class={styles.iconButton} onClick={() => zoomBy(1.6)}>
-                +
-              </button>
-            </div>
-          </div>
-
-          <div class={styles.control}>
-            <label>Position</label>
-            <input
-              type="number"
-              value={position().toFixed(3)}
-              onInput={(event) => {
-                if (!isNaN(event.currentTarget.valueAsNumber))
-                  setPosition(event.currentTarget.valueAsNumber);
-              }}
-            />
-          </div>
-
-          <div class={styles.control}>
-            <label>Vertical scale — {scale().toFixed(1)}×</label>
-            <input
-              type="range"
-              min={0.1}
-              max={4}
-              step={0.1}
-              value={scale()}
-              onInput={(event) => setScale(event.currentTarget.valueAsNumber)}
-            />
-          </div>
-
-          <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
-            <label>Playhead — {fmtTime(playHeadPosition())}</label>
-            <input
-              type="range"
-              min={0}
-              max={duration() || undefined}
-              step={0.001}
-              value={playHeadPosition()}
-              onInput={(event) => {
-                setPlayHeadPosition(event.currentTarget.valueAsNumber);
-                if (isPlaying()) {
-                  play(event.currentTarget.valueAsNumber);
-                }
-              }}
-            />
-          </div>
-
-          <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
-            <label>Oscilloscope latency — {oscLatency()}ms</label>
-            <input
-              type="range"
-              min={0}
-              max={1000}
-              step={10}
-              value={oscLatency()}
-              onInput={(event) => setOscLatency(event.currentTarget.valueAsNumber)}
-            />
-          </div>
-
-          <div class={`${styles.control} ${styles.checkRow}`}>
-            <input
-              type="checkbox"
-              checked={syncPlayHead()}
-              onChange={() => setSyncPlayHead(!syncPlayHead())}
-            />
-            <label>Follow playhead</label>
-          </div>
-        </div>
-      </div>
-
-      <div class={`${styles.panel} ${styles.panelRegions}`}>
-        <div class={styles.panelHead}>
-          <span class={styles.sectionTitle} style={{ margin: 0 }}>
-            Regions
-          </span>
-          <Show when={regions().length > 0}>
-            <button class={`${styles.button} ${styles.danger}`} onClick={() => setRegions([])}>
-              Clear all
-            </button>
-          </Show>
-        </div>
-        <Show
-          when={regions().length > 0}
-          fallback={<p class={styles.empty}>Drag on the waveform to create a region.</p>}
-        >
-          <div class={styles.tableWrap}>
-          <table class={styles.table}>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Duration</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <Index each={regions()}>
-                {(region) => (
-                  <tr>
-                    <td>
-                      <span class={styles.swatch} style={{ background: region().color }} />
-                    </td>
-                    <td>{fmtTime(region().start)}</td>
-                    <td>{fmtTime(region().end)}</td>
-                    <td>{fmtTime(region().end - region().start)}</td>
-                    <td class={styles.rowActions}>
-                      <button class={styles.button} onClick={() => playRegion(region())}>
-                        ▶
-                      </button>
-                      <button
-                        class={`${styles.iconButton} ${styles.danger}`}
-                        onClick={() =>
-                          setRegions(regions().filter(({ id }) => id !== region().id))
-                        }
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </Index>
-            </tbody>
-          </table>
-          </div>
-        </Show>
-      </div>
         </div>
       </div>
 

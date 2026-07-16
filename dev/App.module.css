@@ -337,13 +337,7 @@ input[type="checkbox"] {
   justify-content: center;
   color: var(--muted);
   font-size: 14px;
-  background: repeating-linear-gradient(
-    -45deg,
-    #0b0c10,
-    #0b0c10 12px,
-    #101218 12px,
-    #101218 24px
-  );
+  background: repeating-linear-gradient(-45deg, #0b0c10, #0b0c10 12px, #101218 12px, #101218 24px);
 }
 
 .transportTime {
