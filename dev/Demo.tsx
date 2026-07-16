@@ -4,6 +4,7 @@ import {
   createResource,
   createSignal,
   Index,
+  Show,
   onMount,
   untrack,
 } from "solid-js";
@@ -11,6 +12,14 @@ import {
 import styles from "./App.module.css";
 import { Region, PlayHead, Waveform, Oscilloscope, Regions } from "../src";
 import { WaveformMode } from "src/createCachedWaveformPeaks";
+
+const fmtTime = (s: number) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s % 1) * 1000);
+  return `${m}:${sec.toString().padStart(2, "0")}.${ms.toString().padStart(3, "0")}`;
+};
 
 const Demo: Component = () => {
   let audioSource: AudioBufferSourceNode | undefined;
@@ -52,6 +61,8 @@ const Demo: Component = () => {
   const [oscLatency, setOscLatency] = createSignal(250);
   const [regions, setRegions] = createSignal<Region[]>([]);
 
+  const duration = () => audioBuffer()?.duration ?? 0;
+
   const handleEnded = () => {
     setIsPlaying(false);
     setPlayHeadPosition(audioCtx.currentTime - audioSourcePlayStart);
@@ -83,6 +94,8 @@ const Demo: Component = () => {
     play(region.start, region.end - region.start);
   };
 
+  const zoomBy = (factor: number) => setZoom((z) => Math.max(1, Math.min(100000, z * factor)));
+
   let animationFrame: number;
 
   createEffect(() => {
@@ -108,55 +121,88 @@ const Demo: Component = () => {
         </p>
       </header>
 
-      <div class={styles.panel}>
-        <Waveform
-          style={{ height: "300px" }}
-          buffer={audioBuffer()}
-          position={position()}
-          zoom={zoom()}
-          scale={scale()}
-          logScale={logScale()}
-          mode={mode()}
-          onPositionChange={setPosition}
-          onZoomChange={setZoom}
-          onScaleChange={setScale}
-          strokeStyle="#6ea8fe"
-        >
-          <Regions
-            regions={regions()}
-            onUpdateRegion={(region) => {
-              const index = regions().findIndex(({ id }) => id === region.id);
-              setRegions([...regions().slice(0, index), region, ...regions().slice(index + 1)]);
-            }}
-            onCreateRegion={(region) => {
-              setRegions([...regions(), region]);
-            }}
-            onClickRegion={playRegion}
-          />
-          <PlayHead
-            playHeadPosition={playHeadPosition()}
-            sync={syncPlayHead()}
-            onPlayHeadPositionChange={(newPlayheadPosition) => {
-              setPlayHeadPosition(newPlayheadPosition);
-              if (isPlaying()) {
-                play(newPlayheadPosition);
-              }
-            }}
-          />
-        </Waveform>
+      <div class={styles.board}>
+        <div class={styles.boardMain}>
+          <div class={`${styles.panel} ${styles.panelWave}`}>
+        <div class={styles.panelHead}>
+          <span class={styles.panelTitle}>Waveform</span>
+          <span class={styles.panelMeta}>
+            <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
+            <span class={styles.metaSep}>/</span>
+            <span class={styles.time}>{fmtTime(duration())}</span>
+          </span>
+        </div>
+        <div class={styles.stage}>
+          <Show
+            when={!audioBuffer.loading && !audioBuffer.error}
+            fallback={
+              <div class={styles.stagePlaceholder}>
+                {audioBuffer.error ? "Failed to load audio" : "Decoding audio…"}
+              </div>
+            }
+          >
+            <Waveform
+              style={{ height: "100%" }}
+              buffer={audioBuffer()}
+              position={position()}
+              zoom={zoom()}
+              scale={scale()}
+              logScale={logScale()}
+              mode={mode()}
+              onPositionChange={setPosition}
+              onZoomChange={setZoom}
+              onScaleChange={setScale}
+              strokeStyle="#6ea8fe"
+            >
+              <Regions
+                regions={regions()}
+                onUpdateRegion={(region) => {
+                  const index = regions().findIndex(({ id }) => id === region.id);
+                  setRegions([
+                    ...regions().slice(0, index),
+                    region,
+                    ...regions().slice(index + 1),
+                  ]);
+                }}
+                onCreateRegion={(region) => {
+                  setRegions([...regions(), region]);
+                }}
+                onClickRegion={playRegion}
+              />
+              <PlayHead
+                playHeadPosition={playHeadPosition()}
+                sync={syncPlayHead()}
+                onPlayHeadPositionChange={(newPlayheadPosition) => {
+                  setPlayHeadPosition(newPlayheadPosition);
+                  if (isPlaying()) {
+                    play(newPlayheadPosition);
+                  }
+                }}
+              />
+            </Waveform>
+          </Show>
+        </div>
       </div>
 
-      <div class={styles.panel}>
-        <Oscilloscope
-          style={{ height: "300px" }}
-          analyzerNode={analyser}
-          scale={2}
-          mode={mode()}
-          slowNessFactor={oscLatency()}
-          strokeStyle="#6ea8fe"
-        ></Oscilloscope>
-      </div>
+          <div class={`${styles.panel} ${styles.panelOsc}`}>
+            <div class={styles.panelHead}>
+              <span class={styles.panelTitle}>Oscilloscope</span>
+              <span class={styles.panelMeta}>{isPlaying() ? "● live" : "idle"}</span>
+            </div>
+            <div class={styles.oscFill}>
+              <Oscilloscope
+                style={{ height: "100%" }}
+                analyzerNode={analyser}
+                scale={2}
+                mode={mode()}
+                slowNessFactor={oscLatency()}
+                strokeStyle="#6ea8fe"
+              ></Oscilloscope>
+            </div>
+          </div>
+        </div>
 
+        <div class={styles.boardSide}>
       <div class={styles.panel}>
         <h2 class={styles.sectionTitle}>Controls</h2>
 
@@ -164,6 +210,11 @@ const Demo: Component = () => {
           <button class={`${styles.button} ${styles.primary}`} onClick={togglePlay}>
             {isPlaying() ? "⏸ Pause" : "▶ Play"}
           </button>
+          <div class={styles.transportTime}>
+            <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
+            <span class={styles.metaSep}>/</span>
+            <span class={styles.timeMuted}>{fmtTime(duration())}</span>
+          </div>
         </div>
 
         <div class={styles.controls}>
@@ -179,55 +230,87 @@ const Demo: Component = () => {
           </div>
 
           <div class={styles.control}>
+            <label>Mode</label>
+            <div class={styles.segmented}>
+              <button
+                class={`${styles.seg} ${mode() === "peak" ? styles.segActive : ""}`}
+                onClick={() => setMode("peak")}
+              >
+                Peak
+              </button>
+              <button
+                class={`${styles.seg} ${mode() === "rms" ? styles.segActive : ""}`}
+                onClick={() => setMode("rms")}
+              >
+                RMS
+              </button>
+            </div>
+          </div>
+
+          <div class={styles.control}>
+            <label>Amplitude scale</label>
+            <div class={styles.segmented}>
+              <button
+                class={`${styles.seg} ${!logScale() ? styles.segActive : ""}`}
+                onClick={() => setLogScale(false)}
+              >
+                Linear
+              </button>
+              <button
+                class={`${styles.seg} ${logScale() ? styles.segActive : ""}`}
+                onClick={() => setLogScale(true)}
+              >
+                Log
+              </button>
+            </div>
+          </div>
+
+          <div class={styles.control}>
+            <label>Zoom — {zoom().toFixed(1)}×</label>
+            <div class={styles.zoomRow}>
+              <button class={styles.iconButton} onClick={() => zoomBy(1 / 1.6)}>
+                −
+              </button>
+              <button class={styles.button} onClick={() => setZoom(1)}>
+                Fit
+              </button>
+              <button class={styles.iconButton} onClick={() => zoomBy(1.6)}>
+                +
+              </button>
+            </div>
+          </div>
+
+          <div class={styles.control}>
             <label>Position</label>
             <input
-              value={position().toFixed(3)}
-              onInput={(event) => setPosition(event.currentTarget.valueAsNumber)}
-            />
-          </div>
-
-          <div class={styles.control}>
-            <label>Mode</label>
-            <select
-              value={mode()}
-              onChange={(event) =>
-                setMode(
-                  event.currentTarget.options[event.currentTarget.selectedIndex]
-                    .value as WaveformMode,
-                )
-              }
-            >
-              <option value="peak">Peak</option>
-              <option value="rms">RMS</option>
-            </select>
-          </div>
-
-          <div class={styles.control}>
-            <label>Zoom</label>
-            <input
               type="number"
-              value={zoom().toFixed(3)}
+              value={position().toFixed(3)}
               onInput={(event) => {
-                if (isNaN(event.currentTarget.valueAsNumber)) return;
-                setZoom(Math.max(0, event.currentTarget.valueAsNumber));
+                if (!isNaN(event.currentTarget.valueAsNumber))
+                  setPosition(event.currentTarget.valueAsNumber);
               }}
             />
           </div>
 
           <div class={styles.control}>
-            <label>Scale</label>
+            <label>Vertical scale — {scale().toFixed(1)}×</label>
             <input
-              value={scale().toFixed(3)}
+              type="range"
+              min={0.1}
+              max={4}
+              step={0.1}
+              value={scale()}
               onInput={(event) => setScale(event.currentTarget.valueAsNumber)}
             />
           </div>
 
           <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
-            <label>Playhead — {playHeadPosition().toFixed(3)}s</label>
+            <label>Playhead — {fmtTime(playHeadPosition())}</label>
             <input
               type="range"
               min={0}
-              max={audioBuffer()?.duration}
+              max={duration() || undefined}
+              step={0.001}
               value={playHeadPosition()}
               onInput={(event) => {
                 setPlayHeadPosition(event.currentTarget.valueAsNumber);
@@ -236,20 +319,6 @@ const Demo: Component = () => {
                 }
               }}
             />
-          </div>
-
-          <div class={`${styles.control} ${styles.checkRow}`}>
-            <input
-              type="checkbox"
-              checked={syncPlayHead()}
-              onChange={() => setSyncPlayHead(!syncPlayHead())}
-            />
-            <label>Follow playhead</label>
-          </div>
-
-          <div class={`${styles.control} ${styles.checkRow}`}>
-            <input type="checkbox" checked={logScale()} onChange={() => setLogScale(!logScale())} />
-            <label>Logarithmic scale</label>
           </div>
 
           <div class={styles.control} style={{ "grid-column": "1 / -1" }}>
@@ -263,41 +332,87 @@ const Demo: Component = () => {
               onInput={(event) => setOscLatency(event.currentTarget.valueAsNumber)}
             />
           </div>
+
+          <div class={`${styles.control} ${styles.checkRow}`}>
+            <input
+              type="checkbox"
+              checked={syncPlayHead()}
+              onChange={() => setSyncPlayHead(!syncPlayHead())}
+            />
+            <label>Follow playhead</label>
+          </div>
         </div>
       </div>
 
-      <div class={styles.panel}>
-        <h2 class={styles.sectionTitle}>Regions</h2>
-        <table class={styles.table}>
-          <thead>
-            <tr>
-              <th>Start</th>
-              <th>End</th>
-              <th>Duration</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Index each={regions()}>
-              {(region) => (
-                <tr>
-                  <td>{region().start.toFixed(3)}</td>
-                  <td>{region().end.toFixed(3)}</td>
-                  <td>{(region().end - region().start).toFixed(3)}</td>
-                  <td>
-                    <button class={styles.button} onClick={() => playRegion(region())}>
-                      Play
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </Index>
-          </tbody>
-        </table>
-        {regions().length === 0 && (
-          <p class={styles.empty}>Drag on the waveform to create a region.</p>
-        )}
+      <div class={`${styles.panel} ${styles.panelRegions}`}>
+        <div class={styles.panelHead}>
+          <span class={styles.sectionTitle} style={{ margin: 0 }}>
+            Regions
+          </span>
+          <Show when={regions().length > 0}>
+            <button class={`${styles.button} ${styles.danger}`} onClick={() => setRegions([])}>
+              Clear all
+            </button>
+          </Show>
+        </div>
+        <Show
+          when={regions().length > 0}
+          fallback={<p class={styles.empty}>Drag on the waveform to create a region.</p>}
+        >
+          <div class={styles.tableWrap}>
+          <table class={styles.table}>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <Index each={regions()}>
+                {(region) => (
+                  <tr>
+                    <td>
+                      <span class={styles.swatch} style={{ background: region().color }} />
+                    </td>
+                    <td>{fmtTime(region().start)}</td>
+                    <td>{fmtTime(region().end)}</td>
+                    <td>{fmtTime(region().end - region().start)}</td>
+                    <td class={styles.rowActions}>
+                      <button class={styles.button} onClick={() => playRegion(region())}>
+                        ▶
+                      </button>
+                      <button
+                        class={`${styles.iconButton} ${styles.danger}`}
+                        onClick={() =>
+                          setRegions(regions().filter(({ id }) => id !== region().id))
+                        }
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </Index>
+            </tbody>
+          </table>
+          </div>
+        </Show>
       </div>
+        </div>
+      </div>
+
+      <footer class={styles.footer}>
+        <a class={styles.link} href="https://github.com/jdachtera/solid-waveform" target="_blank">
+          GitHub
+        </a>
+        <a class={styles.link} href="https://www.npmjs.com/package/solid-waveform" target="_blank">
+          npm
+        </a>
+        <span class={styles.footerMuted}>Waveform UI control for SolidJS</span>
+      </footer>
     </div>
   );
 };
