@@ -1,8 +1,13 @@
 export type WaveformData = Float32Array | number[];
 export type WaveformMode = "peak" | "rms";
 
+/** `getLoadedLength` is for data that is still arriving (progressive loading):
+ * how many samples from the start hold audio so far. A column whose samples
+ * reach past it is computed but never cached, so it fills in as the data does.
+ * Defaults to the whole array. */
 const createCachedWaveformSource = (
   data: WaveformData,
+  getLoadedLength: () => number = () => data.length,
 ): {
   warmup: (mode: WaveformMode, onProgress: (progress: number) => void) => Promise<void>;
   getValues: (args: {
@@ -75,8 +80,10 @@ const createCachedWaveformSource = (
       return [data[x], data[x]];
     }
 
-    // Only consult/populate the per-samplesPerPx cache when memoizing (store).
-    const peaksArray = store ? getOrCreatePeaksCache(samplesPerPx, mode) : undefined;
+    // Only consult/populate the per-samplesPerPx cache when memoizing (store), and
+    // only once every sample of the column has arrived.
+    const complete = (x + 1) * samplesPerPx <= getLoadedLength();
+    const peaksArray = store && complete ? getOrCreatePeaksCache(samplesPerPx, mode) : undefined;
     const cached = peaksArray?.get(x);
     if (cached) return cached;
 

@@ -73,6 +73,16 @@ const [regions, setRegions] = createSignal<Region[]>([]);
 </Waveform>;
 ```
 
+### Progressive loading
+
+To draw a long file while it is still arriving, allocate `data` at its full length, fill it as the audio decodes and raise `loadedLength` (in samples). The waveform lays out the whole timeline, redraws as the data grows, and shades the part not loaded yet (`--waveform-unloaded` restyles that).
+
+```tsx
+<Waveform data={samples} duration={duration} loadedLength={loaded()} position={position()} zoom={zoom()} scale={1} />
+```
+
+The demo's `dev/streamAudio.ts` does this for fast-start `.m4a`/`.mp4` (AAC) files with WebCodecs, decoding each packet as soon as its bytes have downloaded, and falls back to `decodeAudioData` elsewhere.
+
 ### Markers (warp / cue points)
 
 `Markers` overlays draggable point markers on the waveform — a play‑start / cue / warp

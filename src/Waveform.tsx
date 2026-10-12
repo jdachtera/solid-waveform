@@ -58,6 +58,11 @@ export type WaveformProps = {
   buffer?: AudioBuffer;
   data?: WaveformData;
   duration?: number;
+  /** For progressive loading: how many samples of `data` hold audio so far.
+   * Allocate `data` at its full length (duration × sample rate), fill it as the
+   * audio decodes, and raise this; the waveform redraws as it grows and shades
+   * the part not loaded yet (`--waveform-unloaded`). Default: all of it. */
+  loadedLength?: number;
   position: number;
   zoom: number;
   scale: number;
@@ -91,6 +96,7 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     "buffer",
     "data",
     "duration",
+    "loadedLength",
     "position",
     "zoom",
     "scale",
@@ -128,7 +134,11 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     top: 0,
   });
 
-  const cachedWaveformPeaks = createMemo(() => createCachedWaveformSource(rawData() ?? []));
+  const loadedLength = () => Math.min(props.loadedLength ?? dataLength(), dataLength());
+  const fullyLoaded = () => loadedLength() >= dataLength();
+  const cachedWaveformPeaks = createMemo(() =>
+    createCachedWaveformSource(rawData() ?? [], loadedLength),
+  );
 
   const [progress, setProgress] = createSignal(0);
 
@@ -225,6 +235,8 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     const logScale = props.logScale;
     const mode = props.mode;
     const sampleDotsOpacity = samplesPerPx < 100 / width ? 1 : 0;
+    // Redraw as progressively loaded data arrives.
+    loadedLength();
 
     const now = window.performance.now();
     if (now - animationFrameScheduleTime < 0.5) {
@@ -293,6 +305,14 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     props.onScaleChange?.(clamp(props.scale * Math.exp(-deltaY * ZOOM_SENSITIVITY), 0.1, 5));
   };
 
+  // Where the not-yet-loaded part starts on screen, clamped to the canvas.
+  const unloadedLeft = () => {
+    const { width } = canvasDimensions();
+    const visible = duration() / props.zoom;
+    const loadedTime = dataLength() ? (loadedLength() / dataLength()) * duration() : 0;
+    return clamp(((loadedTime - props.position) / visible) * width, 0, width);
+  };
+
   // Deep enough that a pixel spans about 1/50 of a sample (on this display), past
   // which there is nothing left to see.
   const maxZoom = () => {
@@ -301,6 +321,8 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
   };
 
   createEffect(() => {
+    // Pre-filling the cache from half-loaded data would only cache silence.
+    if (!fullyLoaded()) return;
     cachedWaveformPeaks().warmup(props.mode, (progress) => setProgress(progress));
   });
 
@@ -344,6 +366,23 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
           height: "100%",
         }}
       />
+
+      {/* The part of the timeline whose audio hasn't arrived yet. */}
+      <Show when={!fullyLoaded() && duration() > 0}>
+        <div
+          class="Waveform-Unloaded"
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            right: 0,
+            left: `${unloadedLeft()}px`,
+            background:
+              "var(--waveform-unloaded, repeating-linear-gradient(-45deg, rgba(127,127,127,0.1) 0 8px, rgba(127,127,127,0.04) 8px 16px))",
+            "pointer-events": "none",
+          }}
+        />
+      </Show>
 
       <Show when={!(progress() === 0 || progress() === 1)}>
         <div
