@@ -108,12 +108,14 @@ async function decodeStreaming(
 
   // Progress is reported at most once a frame; the waveform redraws on each.
   let progressScheduled = false;
+  let finished = false;
   const reportProgress = () => {
     if (progressScheduled) return;
     progressScheduled = true;
     requestAnimationFrame(() => {
       progressScheduled = false;
-      onProgress(written);
+      // A frame that lands after the final report must not wind it back.
+      if (!finished) onProgress(written);
     });
   };
 
@@ -176,8 +178,20 @@ async function decodeStreaming(
   if (failure) throw failure;
   if (!channels) throw new Error("No audio decoded");
 
+  let peak = 0;
+  let nonFinite = 0;
+  for (const value of channels[0].subarray(0, written)) {
+    if (!Number.isFinite(value)) nonFinite++;
+    else if (Math.abs(value) > peak) peak = Math.abs(value);
+  }
+  console.info(
+    `streamAudio: decoded ${written} of ${channels[0].length} frames, peak ${peak.toFixed(3)}` +
+      (nonFinite ? `, ${nonFinite} non-finite samples` : ""),
+  );
+
   // Done: any frames the allocation had beyond what decoded are silence, not
   // audio still to come.
+  finished = true;
   onProgress(channels[0].length);
   const buffer = context.createBuffer(channels.length, Math.max(1, written), sampleRate);
   channels.forEach((channel, c) => buffer.copyToChannel(channel.subarray(0, written), c));

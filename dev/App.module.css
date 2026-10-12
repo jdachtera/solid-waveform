@@ -103,9 +103,23 @@
   .boardSide {
     max-width: none;
   }
+  /* Stacked, the page grows with its content, so nothing here may be sized by
+     flex ratios: with zero flex bases and no definite height to share, the
+     waveform's column collapsed to its minimum and its stage to 0px — an empty,
+     black waveform. Each part takes its own height instead. */
+  .board,
+  .boardMain,
+  .boardSide,
   .panelWave,
+  .panelOsc,
+  .panelRegions {
+    flex: none;
+  }
+  .panelWave {
+    height: 340px;
+  }
   .panelOsc {
-    min-height: 260px;
+    height: 260px;
   }
 }
 
