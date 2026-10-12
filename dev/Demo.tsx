@@ -1,9 +1,10 @@
 import {
   Component,
   createEffect,
-  createResource,
   createSignal,
   Index,
+  on,
+  onCleanup,
   Show,
   onMount,
   untrack,
@@ -12,6 +13,7 @@ import {
 import styles from "./App.module.css";
 import { Region, PlayHead, Waveform, Oscilloscope, Regions } from "../src";
 import { WaveformMode } from "src/createCachedWaveformPeaks";
+import { streamAudio } from "./streamAudio";
 
 const fmtTime = (s: number) => {
   if (!isFinite(s) || s < 0) s = 0;
@@ -42,12 +44,42 @@ const Demo: Component = () => {
   const [url, setUrl] = createSignal("/jam_session.m4a");
   const [inputUrl, setInputUrl] = createSignal(untrack(() => url()));
 
-  const [audioBuffer] = createResource(url, async (url) => {
-    const context = new AudioContext();
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    return context.decodeAudioData(arrayBuffer);
-  });
+  // The audio arrives progressively: `audio` as soon as its length is known (the
+  // waveform lays out the whole timeline and draws what has decoded, `loaded`
+  // samples so far), the playable AudioBuffer once all of it is in.
+  const [audio, setAudio] = createSignal<{ data: Float32Array; duration: number }>();
+  const [loaded, setLoaded] = createSignal(0);
+  const [audioBuffer, setAudioBuffer] = createSignal<AudioBuffer>();
+  const [loadError, setLoadError] = createSignal(false);
+
+  createEffect(
+    on(url, (url) => {
+      const abort = new AbortController();
+      onCleanup(() => abort.abort());
+      setAudio(undefined);
+      setAudioBuffer(undefined);
+      setLoaded(0);
+      setLoadError(false);
+
+      streamAudio(url, audioCtx, {
+        signal: abort.signal,
+        onStart: ({ channels, duration }) => setAudio({ data: channels[0], duration }),
+        onProgress: setLoaded,
+      })
+        .then((buffer) => !abort.signal.aborted && setAudioBuffer(buffer))
+        .catch((error) => {
+          if (!abort.signal.aborted) {
+            console.error(error);
+            setLoadError(true);
+          }
+        });
+    }),
+  );
+
+  const loadedPercent = () => {
+    const data = audio()?.data;
+    return data?.length ? Math.floor((loaded() / data.length) * 100) : 0;
+  };
 
   const [position, setPosition] = createSignal(0);
   const [playHeadPosition, setPlayHeadPosition] = createSignal(0);
@@ -61,7 +93,7 @@ const Demo: Component = () => {
   const [oscLatency, setOscLatency] = createSignal(250);
   const [regions, setRegions] = createSignal<Region[]>([]);
 
-  const duration = () => audioBuffer()?.duration ?? 0;
+  const duration = () => audio()?.duration ?? 0;
 
   const handleEnded = () => {
     setIsPlaying(false);
@@ -82,6 +114,7 @@ const Demo: Component = () => {
   };
 
   const togglePlay = () => {
+    if (!audioBuffer()) return;
     if (isPlaying()) {
       audioSource?.stop();
       setIsPlaying(false);
@@ -91,6 +124,7 @@ const Demo: Component = () => {
   };
 
   const playRegion = (region: Region) => {
+    if (!audioBuffer()) return;
     play(region.start, region.end - region.start);
   };
 
@@ -125,7 +159,12 @@ const Demo: Component = () => {
         <div class={styles.boardMain}>
           <div class={`${styles.panel} ${styles.panelWave}`}>
             <div class={styles.panelHead}>
-              <span class={styles.panelTitle}>Waveform</span>
+              <span class={styles.panelTitle}>
+                Waveform
+                <Show when={audio() && !audioBuffer() && !loadError()}>
+                  <span class={styles.loading}> · loading {loadedPercent()}%</span>
+                </Show>
+              </span>
               <span class={styles.panelMeta}>
                 <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
                 <span class={styles.metaSep}>/</span>
@@ -134,16 +173,18 @@ const Demo: Component = () => {
             </div>
             <div class={styles.stage}>
               <Show
-                when={!audioBuffer.loading && !audioBuffer.error}
+                when={!loadError() && audio()}
                 fallback={
                   <div class={styles.stagePlaceholder}>
-                    {audioBuffer.error ? "Failed to load audio" : "Decoding audio…"}
+                    {loadError() ? "Failed to load audio" : "Loading audio…"}
                   </div>
                 }
               >
                 <Waveform
                   style={{ height: "100%" }}
-                  buffer={audioBuffer()}
+                  data={audio()?.data}
+                  duration={audio()?.duration}
+                  loadedLength={loaded()}
                   position={position()}
                   zoom={zoom()}
                   scale={scale()}
@@ -207,8 +248,13 @@ const Demo: Component = () => {
             <h2 class={styles.sectionTitle}>Controls</h2>
 
             <div class={styles.transport}>
-              <button class={`${styles.button} ${styles.primary}`} onClick={togglePlay}>
-                {isPlaying() ? "⏸ Pause" : "▶ Play"}
+              <button
+                class={`${styles.button} ${styles.primary}`}
+                onClick={togglePlay}
+                disabled={!audioBuffer()}
+                title={audioBuffer() ? undefined : "Playable once the audio has loaded"}
+              >
+                {isPlaying() ? "⏸ Pause" : audioBuffer() ? "▶ Play" : `${loadedPercent()}%`}
               </button>
               <div class={styles.transportTime}>
                 <span class={styles.time}>{fmtTime(playHeadPosition())}</span>
