@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       solid-viewport:
-        specifier: ^0.2.0
-        version: 0.2.0(solid-js@1.9.13)
+        specifier: ^0.3.1
+        version: 0.3.1(solid-js@1.9.13)
     devDependencies:
       prettier:
         specifier: 2.8.1
@@ -1729,8 +1729,8 @@ packages:
     peerDependencies:
       solid-js: ^1.3
 
-  solid-viewport@0.2.0:
-    resolution: {integrity: sha512-7DLFir70qNZ0Hf/iiP2J/J3HJsy64IRMiSBitEeGmodLBFEqgXKkxoSfXKpB4NCg5R/mRgQ+NWNHm9Hm0c+9Ig==}
+  solid-viewport@0.3.1:
+    resolution: {integrity: sha512-gVWOeoxsbkPi1PebzB9YZa5uKZXMsZCceTDC4Yz7dmGJB3+O2sFDQQtjGQ4RoB7PbMIwTrAvX7q4dz/azKCiyA==}
     peerDependencies:
       solid-js: '>=1.0.0'
 
@@ -3762,7 +3762,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  solid-viewport@0.2.0(solid-js@1.9.13):
+  solid-viewport@0.3.1(solid-js@1.9.13):
     dependencies:
       solid-js: 1.9.13
 

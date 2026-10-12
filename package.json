@@ -47,7 +47,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "solid-viewport": "^0.3.0"
+    "solid-viewport": "^0.3.1"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0"
