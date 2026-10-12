@@ -9,15 +9,39 @@ import { drawWaveformWithPeaks } from "./drawFunctions";
 import { clamp } from "./helpers";
 import { WaveformContext, WaveformContextProvider } from "./context";
 import { createStore } from "solid-js/store";
+import { ScrollContainer, ViewPort, WheelAction } from "solid-viewport";
 
-// Wheel-zoom tuning. Zoom is exponential in the (device-normalized, clamped)
-// wheel delta so a mouse notch and a trackpad's stream of tiny deltas both feel
-// right: WHEEL_LINE_PX converts line-mode wheels to pixels; ZOOM_SENSITIVITY sets
-// the step (~1.2× per ~100px mouse notch); WHEEL_MAX_PX caps a single event so one
-// huge delta can't leap across the whole range.
+// Wheel tuning. Zoom is exponential in the (device-normalized, clamped) wheel
+// delta, so a mouse notch and a trackpad's stream of tiny deltas both feel right.
+// ZOOM_SENSITIVITY sets the step (~1.2× per ~100px mouse notch); solid-viewport's
+// own rate is VIEWPORT_ZOOM_K, so the time zoom is scaled to keep this one.
 const WHEEL_LINE_PX = 16;
-const WHEEL_MAX_PX = 140;
 const ZOOM_SENSITIVITY = 0.002;
+const VIEWPORT_ZOOM_K = 0.0015;
+
+// The time axis' scroll spacer is capped, as the hand-rolled scrollbar was: at
+// sample-level zoom of a long file, zoom × width is far past what a browser lays
+// out. The scrollbar then moves proportionally over a larger range per pixel.
+const MAX_SCROLL_SIZE = 10000;
+
+// What the wheel does over the waveform, in solid-viewport's terms. With no
+// modifier, in ONE gesture: the vertical delta zooms (anchored on the pointer) and
+// the horizontal delta pans. Alt swaps them, so a wheel-only mouse can pan. A
+// trackpad pinch (ctrl+wheel) only zooms. Shift is the amplitude scale, which is
+// not an axis: the waveform's own handler takes it.
+const wheelActions = (event: WheelEvent): WheelAction[] => {
+  if (event.shiftKey) return [];
+  if (event.ctrlKey) return [{ type: "zoom", axis: "time", from: "y" }];
+  if (event.altKey)
+    return [
+      { type: "zoom", axis: "time", from: "x" },
+      { type: "scroll", axis: "time", from: "y" },
+    ];
+  return [
+    { type: "zoom", axis: "time", from: "y" },
+    { type: "scroll", axis: "time", from: "x" },
+  ];
+};
 
 // The waveform's audio source. Provide EITHER a decoded `buffer` (reads channel 0)
 // OR a precomputed `data` array of mono samples (full or decimated) plus its
@@ -81,7 +105,6 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     "children",
   ]);
 
-  let scrollbarDivRef: HTMLDivElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
   let context: CanvasRenderingContext2D | undefined;
 
@@ -253,95 +276,29 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
     });
   });
 
-  const handleWheel = (event: WheelEvent & { currentTarget: Element }) => {
+  // Shift + wheel scales the amplitude. Everything else on the wheel is the time
+  // axis, which the ScrollContainer below handles before this sees the event.
+  // The page never scrolls under the waveform.
+  const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
-    const { width, height, left } = canvasDimensions();
-    if (!width) return;
+    if (!event.shiftKey) return;
 
-    // Normalize each delta to pixels: a mouse wheel reports large, infrequent
-    // notches (often deltaMode=LINE), a trackpad reports many small pixel deltas.
-    const px = (d: number, pageSize: number) =>
+    const { height } = canvasDimensions();
+    const deltaY =
       event.deltaMode === 1
-        ? d * WHEEL_LINE_PX
+        ? event.deltaY * WHEEL_LINE_PX
         : event.deltaMode === 2
-        ? d * (pageSize || WHEEL_LINE_PX)
-        : d;
-    let deltaX = px(event.deltaX, width);
-    let deltaY = px(event.deltaY, height);
-    // Alt swaps the axes so a wheel-only mouse can pan (deltaY -> pan) and the
-    // vertical delta drives horizontal motion.
-    if (event.altKey) [deltaX, deltaY] = [deltaY, deltaX];
-
-    // Shift = amplitude (vertical) scale, unchanged.
-    if (event.shiftKey) {
-      const newScale = clamp(props.scale * Math.exp(-deltaY * ZOOM_SENSITIVITY), 0.1, 5);
-      props.onScaleChange?.(newScale);
-      return;
-    }
-
-    // Otherwise, in ONE gesture and with no modifier: the horizontal delta pans and
-    // the vertical delta zooms (anchored on the pointer) — the solid-viewport
-    // "zoom-pan" model, which waveform + pianoroll need. Pan first, then anchor the
-    // zoom off the panned position so the sample under the cursor stays put.
-    const visible = duration() / props.zoom;
-    const maxPosition = Math.max(0, duration() - visible);
-    const panned =
-      deltaX !== 0
-        ? clamp(props.position + (deltaX / width) * visible, 0, maxPosition)
-        : props.position;
-
-    const clampedDy = clamp(deltaY, -WHEEL_MAX_PX, WHEEL_MAX_PX);
-    const dir = props.invertZoom ? 1 : -1;
-    const k = ZOOM_SENSITIVITY * (props.zoomSensitivity > 0 ? props.zoomSensitivity : 1);
-    const factor = Math.exp(dir * -clampedDy * k); // default: scroll DOWN (dy>0) → zoom in
-    const maxZoom = (dataLength() / width) * 50 * window.devicePixelRatio;
-    const newZoom = clamp(props.zoom * factor, 1, maxZoom);
-
-    // Anchor on the pointer (keep the sample under the cursor fixed), measuring from
-    // the panned position at the OLD zoom.
-    const pointerPct = (event.clientX - left) / width;
-    const pointerPosition = panned + visible * pointerPct;
-    const newZoomedLength = duration() / newZoom;
-    const newMaxPosition = Math.max(0, duration() - newZoomedLength);
-    const newPosition = clamp(pointerPosition - pointerPct * newZoomedLength, 0, newMaxPosition);
-
-    if (newZoom !== props.zoom) props.onZoomChange?.(newZoom);
-    if (newPosition !== props.position) props.onPositionChange?.(newPosition);
+        ? event.deltaY * (height || WHEEL_LINE_PX)
+        : event.deltaY;
+    props.onScaleChange?.(clamp(props.scale * Math.exp(-deltaY * ZOOM_SENSITIVITY), 0.1, 5));
   };
 
-  const handleScroll = (event: { currentTarget: HTMLElement }) => {
-    if (didUpdateScrollLeft) {
-      didUpdateScrollLeft = false;
-      return;
-    }
-
-    const maxPosition = duration() - duration() / props.zoom;
-
+  // Deep enough that a pixel spans about 1/50 of a sample (on this display), past
+  // which there is nothing left to see.
+  const maxZoom = () => {
     const { width } = canvasDimensions();
-    const { scrollLeft, scrollWidth } = event.currentTarget;
-    const scrollAmount = scrollLeft / (scrollWidth - width);
-
-    props.onPositionChange?.(maxPosition * scrollAmount);
+    return width ? Math.max(1, (dataLength() / width) * 50 * window.devicePixelRatio) : Infinity;
   };
-
-  let didUpdateScrollLeft = false;
-
-  createEffect(() => {
-    const maxPosition = duration() - duration() / props.zoom;
-    const scrollAmount = maxPosition > 0 ? props.position / maxPosition : 0;
-
-    const { width } = canvasDimensions();
-
-    if (!scrollbarDivRef?.parentElement) return;
-
-    const scrollDivWidth = clamp(props.zoom * width, width, 10000);
-    const scrollLeft = scrollAmount * (scrollDivWidth - width);
-
-    didUpdateScrollLeft = true;
-
-    scrollbarDivRef.parentElement.scrollTo(scrollLeft, 0);
-    scrollbarDivRef.style.width = `${scrollDivWidth}px`;
-  });
 
   createEffect(() => {
     cachedWaveformPeaks().warmup(props.mode, (progress) => setProgress(progress));
@@ -405,43 +362,51 @@ const Waveform = (allProps: WaveformProps): JSX.Element => {
         />
       </Show>
 
-      <div
-        class="Waveform-Scroller"
-        style={{
-          position: "absolute",
-          left: 0,
-          bottom: 0,
-          width: "100%",
-          height: "16px",
-          "z-index": 2,
-          "overflow-x": "auto",
-        }}
-        onScroll={handleScroll}
-      >
-        <div
-          class="Waveform-ScrollbarDiv"
-          ref={scrollbarDivRef}
-          style={{ height: "100%", position: "relative" }}
-        />
-      </div>
-
-      <div
-        class="Waveform-ContentContainer"
-        style={{
-          position: "absolute",
-          left: 0,
-          bottom: 0,
-          width: "100%",
-          height: "100%",
-          "z-index": 1,
-          "overflow-x": "hidden",
-          "touch-action": "none",
+      <ViewPort
+        axes={{
+          time: () => ({
+            position: props.position,
+            range: duration(),
+            pixelOffset: canvasDimensions().left,
+            pixelSize: canvasDimensions().width,
+            zoom: props.zoom,
+            minZoom: 1,
+            maxZoom: maxZoom(),
+            onPositionChange: props.onPositionChange,
+            onZoomChange: props.onZoomChange,
+          }),
         }}
       >
-        <div class="Waveform-Content" style={{ height: "100%", position: "relative" }}>
-          <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
-        </div>
-      </div>
+        {/* Pans and zooms the time axis: the wheel (see wheelActions), its own
+            scrollbar, one finger to pan and two to pinch on touch. The canvas
+            underneath is drawn from the same position and zoom. */}
+        <ScrollContainer
+          class="Waveform-Scroller"
+          horizontalAxis="time"
+          wheel={wheelActions}
+          pinch="horizontal"
+          nativeScrollbars
+          maxScrollSize={MAX_SCROLL_SIZE}
+          // The waveform's default is scroll down = zoom in, solid-viewport's the
+          // opposite.
+          invertZoom={!props.invertZoom}
+          zoomSensitivity={
+            (props.zoomSensitivity > 0 ? props.zoomSensitivity : 1) *
+            (ZOOM_SENSITIVITY / VIEWPORT_ZOOM_K)
+          }
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            "z-index": 1,
+            "overflow-y": "hidden",
+          }}
+        >
+          <div class="Waveform-Content" style={{ height: "100%", position: "relative" }}>
+            <WaveformContextProvider value={contextValue}>{props.children}</WaveformContextProvider>
+          </div>
+        </ScrollContainer>
+      </ViewPort>
     </div>
   );
 };

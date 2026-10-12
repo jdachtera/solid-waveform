@@ -30,7 +30,8 @@ with sync_playwright() as p:
 
     zoom = lambda: float(page.eval_on_selector("input[type=number]", "e => e.value"))
     pos = lambda: float(page.get_by_role("textbox").nth(1).input_value())
-    barw = lambda: page.query_selector(".Waveform-ScrollbarDiv").evaluate("e => e.getBoundingClientRect().width")
+    # Width of the scroll range: the solid-viewport ScrollContainer sizes its spacer to zoom × width.
+    barw = lambda: page.query_selector(".Waveform-Scroller").evaluate("e => e.scrollWidth")
 
     canvas = page.query_selector(".Waveform canvas")
     drawn = canvas.evaluate(
