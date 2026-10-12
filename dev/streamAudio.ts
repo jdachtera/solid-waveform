@@ -62,6 +62,12 @@ export async function streamAudio(
     }
   }
 
+  console.info(
+    index
+      ? `streamAudio: decoding ${url} as it downloads (${index.config.codec}, ${index.packets.length} packets)`
+      : `streamAudio: ${url} can't be streamed here; decoding it once downloaded`,
+  );
+
   if (!index) {
     while (more) more = await read();
     return decodeWhole(bytes.view(), context, callbacks);

@@ -80,6 +80,10 @@ const createCachedWaveformSource = (
       return [data[x], data[x]];
     }
 
+    // A column wholly past the loaded data is silence, and computing it anyway
+    // (it can't be cached) would rescan everything still to come on every draw.
+    if (x * samplesPerPx >= getLoadedLength()) return [0, 0];
+
     // Only consult/populate the per-samplesPerPx cache when memoizing (store), and
     // only once every sample of the column has arrived.
     const complete = (x + 1) * samplesPerPx <= getLoadedLength();
